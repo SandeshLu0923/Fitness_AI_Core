@@ -16,9 +16,9 @@ PORT = int(os.getenv("PORT", 8000))
 
 # Validation: Ensure critical keys are present
 if not GROQ_API_KEY:
-    raise ValueError(
-        "Missing GROQ_API_KEY in environment configuration. "
-        "Please set GROQ_API_KEY in your .env file or environment variables."
+    print(
+        "[CONFIG_WARNING] Missing GROQ_API_KEY. "
+        "AI chat, diet, and plan generation routes will fail until it is configured."
     )
 
 if not MONGODB_URL:

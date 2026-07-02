@@ -44,3 +44,8 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Companion app local/build artifacts
+release/
+.desktop_companion_venv/
+desktop_companion/.env

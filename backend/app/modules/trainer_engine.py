@@ -11,9 +11,8 @@ from mediapipe.tasks.python import vision
 from mediapipe import Image, ImageFormat
 import numpy as np
 import joblib
-from groq import Groq
 from pymongo import MongoClient
-from app.config import GROQ_API_KEY, GROQ_MODEL, MONGODB_URL
+from app.config import MONGODB_URL
 from pymongo.errors import PyMongoError
 from app.database import exercise_logs_col
 from app.modules.trainer_utils import calculate_angle, WeeklyMacrocyclePlan

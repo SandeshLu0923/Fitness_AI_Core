@@ -32,7 +32,7 @@ foreach ($modelName in $modelNames) {
     for ($partIndex = 0; $partIndex -lt $partCount; $partIndex++) {
         $offset = $partIndex * $chunkSizeBytes
         $count = [Math]::Min($chunkSizeBytes, $bytes.Length - $offset)
-        $partName = "{0}.part{1:D2}" -f $modelName, ($partIndex + 1)
+        $partName = "{0}.part{1:D2}.zip" -f $modelName, ($partIndex + 1)
         $partPath = Join-Path $distDir $partName
         $partBytes = New-Object byte[] $count
         [Array]::Copy($bytes, $offset, $partBytes, 0, $count)

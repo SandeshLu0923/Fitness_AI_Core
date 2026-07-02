@@ -153,6 +153,16 @@ async def generic_exception_handler(request: Request, exc: Exception):
 async def health_check():
     return {"status": "healthy"}
 
+@app.get("/")
+@app.head("/")
+async def root_check():
+    return {
+        "status": "healthy",
+        "service": "Fitness AI Core API",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
 if __name__ == "__main__":
     print(f"[SERVER_START] Deploying environment tracker domain onto http://{HOST}:{PORT}")
     uvicorn.run("app.main:app", host=HOST, port=PORT, reload=True)

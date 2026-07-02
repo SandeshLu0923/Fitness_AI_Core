@@ -4,6 +4,18 @@ $root = Split-Path -Parent $PSScriptRoot
 $venvPath = Join-Path $root ".desktop_companion_venv"
 
 function Resolve-Python311 {
+    $projectPython = Join-Path $root "venv\Scripts\python.exe"
+    if (Test-Path -LiteralPath $projectPython) {
+        try {
+            $versionOutput = & $projectPython --version 2>&1
+            if ($LASTEXITCODE -eq 0 -and $versionOutput -match "Python 3\.11") {
+                return @{ Exe = $projectPython; Arg = "" }
+            }
+        } catch {
+            # Continue to global Python checks below.
+        }
+    }
+
     $candidates = @(
         @("py", "-3.11"),
         @("python", "")

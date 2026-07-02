@@ -5,6 +5,7 @@ import asyncio
 import json
 import threading
 import time
+import queue
 import mediapipe as mp
 from mediapipe.tasks.python import vision
 from mediapipe import Image, ImageFormat
@@ -65,25 +66,45 @@ def normalize_exercise_type(exercise_type: str) -> str:
 
 
 def count_extended_fingers(hand_landmarks) -> int:
-    # MediaPipe Hands normalized coordinates: lower y means fingertip is higher/open.
+    # MediaPipe Hands normalized coordinates. Use both vertical extension and
+    # wrist distance so an open palm works even when it is not above shoulder.
     finger_pairs = ((8, 6), (12, 10), (16, 14), (20, 18))
     extended = 0
     for tip_idx, pip_idx in finger_pairs:
         tip = hand_landmarks.landmark[tip_idx]
         pip = hand_landmarks.landmark[pip_idx]
-        if tip.y < pip.y - 0.015:
+        mcp = hand_landmarks.landmark[tip_idx - 3]
+        wrist = hand_landmarks.landmark[0]
+        tip_to_wrist = ((tip.x - wrist.x) ** 2 + (tip.y - wrist.y) ** 2) ** 0.5
+        pip_to_wrist = ((pip.x - wrist.x) ** 2 + (pip.y - wrist.y) ** 2) ** 0.5
+        tip_to_mcp = ((tip.x - mcp.x) ** 2 + (tip.y - mcp.y) ** 2) ** 0.5
+        pip_to_mcp = ((pip.x - mcp.x) ** 2 + (pip.y - mcp.y) ** 2) ** 0.5
+        vertically_open = tip.y < pip.y - 0.01
+        radially_open = tip_to_wrist > pip_to_wrist * 1.08 and tip_to_mcp > pip_to_mcp * 1.08
+        if vertically_open or radially_open:
             extended += 1
     return extended
 
 
+def is_open_palm(hand_landmarks) -> bool:
+    fingers = count_extended_fingers(hand_landmarks)
+    landmarks = hand_landmarks.landmark
+    index_mcp = landmarks[5]
+    pinky_mcp = landmarks[17]
+    index_tip = landmarks[8]
+    pinky_tip = landmarks[20]
+    palm_width = ((index_mcp.x - pinky_mcp.x) ** 2 + (index_mcp.y - pinky_mcp.y) ** 2) ** 0.5
+    fingertip_spread = ((index_tip.x - pinky_tip.x) ** 2 + (index_tip.y - pinky_tip.y) ** 2) ** 0.5
+    return fingers >= 4 and palm_width > 0.045 and fingertip_spread > palm_width * 0.85
+
+
 def update_shutdown_gesture(hand_results, gesture_state: dict) -> tuple[bool, int, str]:
-    """Detect an open palm facing the camera for about five seconds."""
+    """Detect any clear open palm for about five seconds."""
     if not hand_results or not hand_results.multi_hand_landmarks:
         gesture_state["open_started_at"] = None
         return False, 0, "Hold an open palm toward the camera for 5 seconds to stop."
 
-    fingers = count_extended_fingers(hand_results.multi_hand_landmarks[0])
-    if fingers < 4:
+    if not is_open_palm(hand_results.multi_hand_landmarks[0]):
         gesture_state["open_started_at"] = None
         return False, 0, "Hold an open palm toward the camera for 5 seconds to stop."
 
@@ -96,6 +117,67 @@ def update_shutdown_gesture(hand_results, gesture_state: dict) -> tuple[bool, in
     if elapsed >= 5.0:
         return True, 100, "Open-palm shutdown confirmed."
     return False, progress, f"Keep palm open to stop: {5.0 - elapsed:.1f}s"
+
+
+def point_distance(a, b) -> float:
+    return float(((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5)
+
+
+def classify_geometry_state(canonical_exercise: str, lm_map: dict) -> tuple[str | None, str | None]:
+    """Fast landmark geometry fallback/validator for supported exercises."""
+    if canonical_exercise == "squat" and ((23 in lm_map and 25 in lm_map and 27 in lm_map) or (24 in lm_map and 26 in lm_map and 28 in lm_map)):
+        leg = (23, 25, 27) if 23 in lm_map and 25 in lm_map and 27 in lm_map else (24, 26, 28)
+        knee_angle = calculate_angle(lm_map[leg[0]], lm_map[leg[1]], lm_map[leg[2]])
+        if knee_angle < 125.0:
+            return "DOWN", "Depth detected. Keep chest up and push through heels."
+        if knee_angle > 155.0:
+            return "UP", "Standing tall. Begin the next controlled rep."
+        return None, f"Squat angle {int(knee_angle)} deg. Go lower for a full rep."
+
+    if canonical_exercise == "pushup" and ((11 in lm_map and 13 in lm_map and 15 in lm_map) or (12 in lm_map and 14 in lm_map and 16 in lm_map)):
+        arm = (11, 13, 15) if 11 in lm_map and 13 in lm_map and 15 in lm_map else (12, 14, 16)
+        elbow_angle = calculate_angle(lm_map[arm[0]], lm_map[arm[1]], lm_map[arm[2]])
+        shoulder = lm_map[arm[0]]
+        hip = lm_map[23] if 23 in lm_map else lm_map.get(24)
+        body_ready = hip is None or abs(shoulder[1] - hip[1]) < 95
+        if not body_ready:
+            return None, "Keep shoulder, hip, and legs in one straight push-up line."
+        if elbow_angle < 105.0:
+            return "DOWN", "Push-up depth detected. Press back up with a straight body."
+        if elbow_angle > 158.0:
+            return "UP", "Arms extended. Keep core tight before the next rep."
+        return None, f"Elbow angle {int(elbow_angle)} deg. Move through the full push-up range."
+
+    if canonical_exercise == "situp" and ((11 in lm_map and 23 in lm_map and 25 in lm_map) or (12 in lm_map and 24 in lm_map and 26 in lm_map)):
+        side = (11, 23, 25) if 11 in lm_map and 23 in lm_map and 25 in lm_map else (12, 24, 26)
+        hip_angle = calculate_angle(lm_map[side[0]], lm_map[side[1]], lm_map[side[2]])
+        if hip_angle < 105.0:
+            return "UP", "Sit-up top position detected."
+        if hip_angle > 135.0:
+            return "DOWN", "Sit-up lower position detected."
+        return None, f"Sit-up angle {int(hip_angle)} deg. Move through full range."
+
+    if canonical_exercise == "pullup" and ((11 in lm_map and 13 in lm_map and 15 in lm_map) or (12 in lm_map and 14 in lm_map and 16 in lm_map)):
+        arm = (11, 13, 15) if 11 in lm_map and 13 in lm_map and 15 in lm_map else (12, 14, 16)
+        elbow_angle = calculate_angle(lm_map[arm[0]], lm_map[arm[1]], lm_map[arm[2]])
+        if elbow_angle < 95.0:
+            return "UP", "Pull-up top position detected."
+        if elbow_angle > 145.0:
+            return "DOWN", "Pull-up hang position detected."
+        return None, f"Pull-up elbow angle {int(elbow_angle)} deg. Continue the rep."
+
+    if canonical_exercise == "jumping-jacks" and 11 in lm_map and 12 in lm_map and 15 in lm_map and 16 in lm_map:
+        shoulder_y = (lm_map[11][1] + lm_map[12][1]) / 2
+        wrist_y = (lm_map[15][1] + lm_map[16][1]) / 2
+        hand_spread = point_distance(lm_map[15], lm_map[16])
+        shoulder_spread = point_distance(lm_map[11], lm_map[12])
+        if wrist_y < shoulder_y - 20 and hand_spread > shoulder_spread * 1.15:
+            return "UP", "Jumping jack arms-up position detected."
+        if wrist_y > shoulder_y + 65:
+            return "DOWN", "Jumping jack arms-down position detected."
+        return None, "Raise and lower arms through full jumping-jack range."
+
+    return None, None
 
 
 def classify_pose_state(landmarks, canonical_exercise: str) -> tuple[str | None, float]:
@@ -435,6 +517,9 @@ def launch_native_opencv_tracker(
     session_id = f"{user_id}-{canonical_exercise}-{int(datetime.datetime.utcnow().timestamp())}"
     sync_client = None
     sync_exercise_logs = None
+    db_write_queue: queue.Queue | None = None
+    db_writer_stop_event = threading.Event()
+    db_writer_thread = None
     cap = None
     pose_tracker = None
     hand_tracker = None
@@ -454,6 +539,7 @@ def launch_native_opencv_tracker(
     up_frames = 0
     had_valid_down = False
     stable_required_frames = 3 if canonical_exercise in {"jumping-jacks", "situp", "pullup"} else 4
+    last_sidebar = None
 
     def refresh_progress():
         nonlocal sets_completed, current_set, current_set_reps, exercise_completed
@@ -469,38 +555,74 @@ def launch_native_opencv_tracker(
             current_set = min(sets_completed + 1, target_sets)
             current_set_reps = min(remaining_reps, target_reps_per_set)
 
-    def save_live_stats(session_active: bool = True):
-        if sync_exercise_logs is None:
-            return
+    def build_live_stats_payload(session_active: bool = True):
         total_reps = int(correct_reps + incorrect_reps)
         progress_percent = round(min((total_reps / max(target_total_reps, 1)) * 100, 100), 2)
+        return {
+            "user_id": user_id,
+            "type": "live_tracking",
+            "session_id": session_id,
+            "session_active": session_active,
+            "timestamp": datetime.datetime.utcnow(),
+            "exercise_name": display_exercise,
+            "exercise_type": canonical_exercise,
+            "sets_completed": int(sets_completed),
+            "target_sets": int(target_sets),
+            "target_reps_per_set": int(target_reps_per_set),
+            "current_set": int(current_set),
+            "current_set_reps": int(current_set_reps),
+            "correct_reps": int(correct_reps),
+            "incorrect_reps": int(incorrect_reps),
+            "total_reps": total_reps,
+            "target_total_reps": int(target_total_reps),
+            "progress_percent": progress_percent,
+            "exercise_completed": bool(exercise_completed),
+            "accuracy": round((correct_reps / max(total_reps, 1)) * 100, 2) if total_reps else 0,
+            "feedback": feedback_text,
+            "position_state": pose_position_str,
+        }
+
+    def write_live_stats(payload: dict):
+        if sync_exercise_logs is None:
+            return
         sync_exercise_logs.replace_one(
             {"user_id": user_id, "type": "live_tracking", "session_id": session_id},
-            {
-                "user_id": user_id,
-                "type": "live_tracking",
-                "session_id": session_id,
-                "session_active": session_active,
-                "timestamp": datetime.datetime.utcnow(),
-                "exercise_name": display_exercise,
-                "exercise_type": canonical_exercise,
-                "sets_completed": int(sets_completed),
-                "target_sets": int(target_sets),
-                "target_reps_per_set": int(target_reps_per_set),
-                "current_set": int(current_set),
-                "current_set_reps": int(current_set_reps),
-                "correct_reps": int(correct_reps),
-                "incorrect_reps": int(incorrect_reps),
-                "total_reps": total_reps,
-                "target_total_reps": int(target_total_reps),
-                "progress_percent": progress_percent,
-                "exercise_completed": bool(exercise_completed),
-                "accuracy": round((correct_reps / max(total_reps, 1)) * 100, 2) if total_reps else 0,
-                "feedback": feedback_text,
-                "position_state": pose_position_str,
-            },
+            payload,
             upsert=True,
         )
+
+    def db_writer_loop():
+        if db_write_queue is None:
+            return
+        while not db_writer_stop_event.is_set() or not db_write_queue.empty():
+            try:
+                payload = db_write_queue.get(timeout=0.25)
+            except queue.Empty:
+                continue
+            try:
+                write_live_stats(payload)
+            except Exception as write_error:
+                print(f"[DATABASE_WARNING] Live stats write skipped: {type(write_error).__name__}")
+            finally:
+                db_write_queue.task_done()
+
+    def save_live_stats(session_active: bool = True, force: bool = False):
+        payload = build_live_stats_payload(session_active)
+        if force or db_write_queue is None or db_writer_thread is None or not db_writer_thread.is_alive():
+            write_live_stats(payload)
+            return
+        try:
+            db_write_queue.put_nowait(payload)
+        except queue.Full:
+            try:
+                db_write_queue.get_nowait()
+                db_write_queue.task_done()
+            except queue.Empty:
+                pass
+            try:
+                db_write_queue.put_nowait(payload)
+            except queue.Full:
+                pass
 
     try:
         try:
@@ -513,6 +635,13 @@ def launch_native_opencv_tracker(
                 retryWrites=False,
             )
             sync_exercise_logs = sync_client.fitness_ai.exercise_logs
+            db_write_queue = queue.Queue(maxsize=4)
+            db_writer_thread = threading.Thread(
+                target=db_writer_loop,
+                name=f"fitness-tracker-db-writer-{session_id}",
+                daemon=True,
+            )
+            db_writer_thread.start()
             previous_progress = sync_exercise_logs.find_one(
                 {
                     "user_id": user_id,
@@ -566,7 +695,7 @@ def launch_native_opencv_tracker(
         shutdown_gesture_state = {"open_started_at": None}
         last_hand_results = None
         refresh_progress()
-        save_live_stats(session_active=True)
+        save_live_stats(session_active=True, force=True)
 
         print(f"[ENGINE_INFO] Starting training loop for exercise: {canonical_exercise}")
 
@@ -591,7 +720,7 @@ def launch_native_opencv_tracker(
             if pose_tracker:
                 try:
                     pose_results = pose_tracker.process(rgb_frame)
-                    if hand_tracker and frame_count % 3 == 0:
+                    if hand_tracker and frame_count % 10 == 0:
                         last_hand_results = hand_tracker.process(rgb_frame)
                     hand_results = last_hand_results
                     shutdown_confirmed, shutdown_progress, shutdown_text = update_shutdown_gesture(hand_results, shutdown_gesture_state)
@@ -606,84 +735,56 @@ def launch_native_opencv_tracker(
                             if landmark.visibility > 0.45:
                                 lm_map[idx] = (landmark.x * w, landmark.y * h)
 
+                        candidate_state = None
+                        geometry_state, geometry_feedback = classify_geometry_state(canonical_exercise, lm_map)
+
+                        phase_threshold = 0.48 if canonical_exercise in {"pullup", "situp"} else 0.52
+                        model_threshold = 0.46 if canonical_exercise in {"jumping-jacks", "situp", "pullup"} else 0.58
                         phase_state, phase_confidence = classify_exercise_phase(
                             pose_results.pose_landmarks.landmark,
                             canonical_exercise,
                         )
-                        model_state, model_confidence = classify_pose_state(
-                            pose_results.pose_landmarks.landmark,
-                            canonical_exercise,
+                        needs_model_fallback = not (
+                            phase_state in {"UP", "DOWN", "MID", "INVALID"}
+                            and phase_confidence >= phase_threshold
                         )
-                        candidate_state = None
-
-                        phase_threshold = 0.48 if canonical_exercise in {"pullup", "situp"} else 0.52
-                        model_threshold = 0.46 if canonical_exercise in {"jumping-jacks", "situp", "pullup"} else 0.58
+                        model_state, model_confidence = (None, 0.0)
+                        if needs_model_fallback:
+                            model_state, model_confidence = classify_pose_state(
+                                pose_results.pose_landmarks.landmark,
+                                canonical_exercise,
+                            )
 
                         if not pose_ready:
                             feedback_text = "No full pose detected. Step back and keep your whole body visible."
+                        elif canonical_exercise == "pushup" and geometry_state:
+                            candidate_state = geometry_state
+                            feedback_text = geometry_feedback or "Push-up state detected."
                         elif phase_state in {"UP", "DOWN"} and phase_confidence >= phase_threshold:
-                            candidate_state = phase_state
-                            feedback_text = f"{display_exercise} {phase_state.lower()} phase ({phase_confidence:.0%})."
+                            if geometry_state and geometry_state != phase_state and phase_confidence < 0.72:
+                                candidate_state = geometry_state
+                                feedback_text = geometry_feedback or f"{display_exercise} {geometry_state.lower()} state detected."
+                            else:
+                                candidate_state = phase_state
+                                feedback_text = f"{display_exercise} {phase_state.lower()} phase ({phase_confidence:.0%})."
                         elif phase_state in {"MID", "INVALID"} and phase_confidence >= phase_threshold:
-                            feedback_text = f"{display_exercise} {phase_state.lower()} phase. Complete the full range."
+                            if geometry_state:
+                                candidate_state = geometry_state
+                                feedback_text = geometry_feedback or f"{display_exercise} {geometry_state.lower()} state detected."
+                            else:
+                                feedback_text = f"{display_exercise} {phase_state.lower()} phase. Complete the full range."
                         elif model_state and model_confidence >= model_threshold:
-                            candidate_state = model_state
-                            feedback_text = f"{display_exercise} {model_state.lower()} state detected ({model_confidence:.0%} confidence)."
-                        elif canonical_exercise == "squat" and ((23 in lm_map and 25 in lm_map and 27 in lm_map) or (24 in lm_map and 26 in lm_map and 28 in lm_map)):
-                            leg = (23, 25, 27) if 23 in lm_map and 25 in lm_map and 27 in lm_map else (24, 26, 28)
-                            knee_angle = calculate_angle(lm_map[leg[0]], lm_map[leg[1]], lm_map[leg[2]])
-                            if knee_angle < 125.0:
-                                candidate_state = "DOWN"
-                                feedback_text = "Depth detected. Keep chest up and push through heels."
-                            elif knee_angle > 155.0:
-                                candidate_state = "UP"
-                                feedback_text = "Standing tall. Begin the next controlled rep."
+                            if geometry_state and geometry_state != model_state and model_confidence < 0.68:
+                                candidate_state = geometry_state
+                                feedback_text = geometry_feedback or f"{display_exercise} {geometry_state.lower()} state detected."
                             else:
-                                feedback_text = f"Squat angle {int(knee_angle)} deg. Go lower for a full rep."
-                        elif pose_ready and canonical_exercise == "pushup" and ((11 in lm_map and 13 in lm_map and 15 in lm_map) or (12 in lm_map and 14 in lm_map and 16 in lm_map)):
-                            arm = (11, 13, 15) if 11 in lm_map and 13 in lm_map and 15 in lm_map else (12, 14, 16)
-                            elbow_angle = calculate_angle(lm_map[arm[0]], lm_map[arm[1]], lm_map[arm[2]])
-                            if elbow_angle < 95.0:
-                                candidate_state = "DOWN"
-                                feedback_text = "Push-up depth detected. Press back up with a straight line."
-                            elif elbow_angle > 155.0:
-                                candidate_state = "UP"
-                                feedback_text = "Arms extended. Keep core tight."
-                            else:
-                                feedback_text = f"Elbow angle {int(elbow_angle)} deg. Move with control."
-                        elif pose_ready and canonical_exercise == "situp" and ((11 in lm_map and 23 in lm_map and 25 in lm_map) or (12 in lm_map and 24 in lm_map and 26 in lm_map)):
-                            side = (11, 23, 25) if 11 in lm_map and 23 in lm_map and 25 in lm_map else (12, 24, 26)
-                            hip_angle = calculate_angle(lm_map[side[0]], lm_map[side[1]], lm_map[side[2]])
-                            if hip_angle < 105.0:
-                                candidate_state = "UP"
-                                feedback_text = "Sit-up top position detected."
-                            elif hip_angle > 135.0:
-                                candidate_state = "DOWN"
-                                feedback_text = "Sit-up lower position detected."
-                            else:
-                                feedback_text = f"Sit-up angle {int(hip_angle)} deg. Move through full range."
-                        elif pose_ready and canonical_exercise == "pullup" and ((11 in lm_map and 13 in lm_map and 15 in lm_map) or (12 in lm_map and 14 in lm_map and 16 in lm_map)):
-                            arm = (11, 13, 15) if 11 in lm_map and 13 in lm_map and 15 in lm_map else (12, 14, 16)
-                            elbow_angle = calculate_angle(lm_map[arm[0]], lm_map[arm[1]], lm_map[arm[2]])
-                            if elbow_angle < 95.0:
-                                candidate_state = "UP"
-                                feedback_text = "Pull-up top position detected."
-                            elif elbow_angle > 145.0:
-                                candidate_state = "DOWN"
-                                feedback_text = "Pull-up hang position detected."
-                            else:
-                                feedback_text = f"Pull-up elbow angle {int(elbow_angle)} deg. Continue the rep."
-                        elif pose_ready and canonical_exercise == "jumping-jacks" and 11 in lm_map and 12 in lm_map and 15 in lm_map and 16 in lm_map:
-                            shoulder_y = (lm_map[11][1] + lm_map[12][1]) / 2
-                            wrist_y = (lm_map[15][1] + lm_map[16][1]) / 2
-                            if wrist_y < shoulder_y - 20:
-                                candidate_state = "UP"
-                                feedback_text = "Jumping jack arms-up position detected."
-                            elif wrist_y > shoulder_y + 70:
-                                candidate_state = "DOWN"
-                                feedback_text = "Jumping jack arms-down position detected."
-                            else:
-                                feedback_text = "Raise and lower arms through full jumping-jack range."
+                                candidate_state = model_state
+                                feedback_text = f"{display_exercise} {model_state.lower()} state detected ({model_confidence:.0%} confidence)."
+                        elif geometry_state:
+                            candidate_state = geometry_state
+                            feedback_text = geometry_feedback or f"{display_exercise} {geometry_state.lower()} state detected."
+                        elif geometry_feedback:
+                            feedback_text = geometry_feedback
                         else:
                             feedback_text = f"Waiting for a confident {display_exercise} up/down state."
 
@@ -723,7 +824,7 @@ def launch_native_opencv_tracker(
                         feedback_text = shutdown_text
                     if shutdown_confirmed:
                         print("[ENGINE_INFO] Shutdown triggered by palm-to-fist gesture")
-                        save_live_stats(session_active=False)
+                        save_live_stats(session_active=False, force=True)
                         break
                 except Exception as e:
                     if frame_count % 60 == 0:
@@ -735,17 +836,18 @@ def launch_native_opencv_tracker(
             if rep_completed or frame_count % 30 == 0:
                 save_live_stats(session_active=True)
             if exercise_completed:
-                save_live_stats(session_active=False)
+                save_live_stats(session_active=False, force=True)
                 print("[ENGINE_INFO] Exercise target completed, terminating tracker loop")
                 break
 
-            sidebar = construct_trainer_sidebar(
-                display_exercise, correct_reps, incorrect_reps, sets_completed,
-                current_direction, pose_position_str, feedback_text, shutdown_progress,
-                target_reps_per_set, target_sets, current_set_reps, current_set
-            )
+            if last_sidebar is None or rep_completed or shutdown_progress > 0 or frame_count % 4 == 0:
+                last_sidebar = construct_trainer_sidebar(
+                    display_exercise, correct_reps, incorrect_reps, sets_completed,
+                    current_direction, pose_position_str, feedback_text, shutdown_progress,
+                    target_reps_per_set, target_sets, current_set_reps, current_set
+                )
 
-            master_canvas = np.hstack((display_frame, sidebar))
+            master_canvas = np.hstack((display_frame, last_sidebar))
             cv2.imshow("FITNESS AI - TRAINER CORE ENGINE", master_canvas)
 
             key = cv2.waitKey(1) & 0xFF
@@ -759,7 +861,7 @@ def launch_native_opencv_tracker(
             except cv2.error:
                 break
 
-        save_live_stats(session_active=False)
+        save_live_stats(session_active=False, force=True)
         print(f"[DATABASE_LOG_FINAL] Session complete! Reps: {correct_reps}, Sets: {sets_completed}")
     except Exception as e:
         print(f"[ENGINE_FATAL] Unexpected error in launch_native_opencv_tracker: {type(e).__name__}: {e}")
@@ -767,6 +869,9 @@ def launch_native_opencv_tracker(
         traceback.print_exc()
     finally:
         try:
+            db_writer_stop_event.set()
+            if db_writer_thread is not None and db_writer_thread.is_alive():
+                db_writer_thread.join(timeout=1.5)
             if cap:
                 cap.release()
             if pose_tracker:

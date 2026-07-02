@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Play, Square, Send } from 'lucide-react';
+import { Download, ExternalLink, Monitor, Play, Send, Smartphone, Square } from 'lucide-react';
 
 interface TrainingStats {
   exercise_name: string;
@@ -34,13 +34,29 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
   const [loading, setLoading] = useState(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const completionHandledRef = useRef(false);
+  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const localTrackerUrl = import.meta.env.VITE_LOCAL_TRACKER_URL || 'http://localhost:8000';
+  const desktopCompanionUrl = import.meta.env.VITE_DESKTOP_COMPANION_URL || '';
+  const mobileCompanionUrl = import.meta.env.VITE_MOBILE_COMPANION_URL || '';
+  const desktopDeepLink = import.meta.env.VITE_DESKTOP_COMPANION_DEEP_LINK || 'fitnessai://tracker';
+  const hasCompanionDownloads = Boolean(desktopCompanionUrl || mobileCompanionUrl);
+
+  const openDesktopCompanion = () => {
+    const params = new URLSearchParams({
+      userId,
+      exercise: exerciseType.toLowerCase(),
+      sets: String(Math.max(1, Number(targetSets) || 1)),
+      reps: String(Math.max(1, Number(targetReps) || 10)),
+    });
+    window.location.href = `${desktopDeepLink}?${params.toString()}`;
+  };
 
   const finalizeWorkout = async (finalStats: TrainingStats) => {
     if (completionHandledRef.current) return;
     completionHandledRef.current = true;
     try {
       await axios.post(
-        `http://localhost:8000/api/gym-trainer/log-completed-workout`,
+        `${apiBaseUrl}/api/gym-trainer/log-completed-workout`,
         {
           user_id: userId,
           exercise_name: finalStats.exercise_name,
@@ -54,7 +70,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       );
       try {
         await axios.post(
-          `http://localhost:8000/api/performance/score`,
+          `${apiBaseUrl}/api/performance/score`,
           {
             session_data: {
               session_id: `${userId}-${Date.now()}`,
@@ -91,7 +107,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       setFeedback('Initializing OpenCV desktop tracker...');
       
       // Use backend OpenCV tracker for desktop-only performance
-      await axios.post(`http://localhost:8000/api/gym-trainer/start`, {
+      await axios.post(`${localTrackerUrl}/api/gym-trainer/start`, {
         user_id: userId,
         exercise_type: exerciseType.toLowerCase(),
         target_sets: Math.max(1, Number(targetSets) || 1),
@@ -104,7 +120,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       }
     } catch (error: any) {
       console.error('Failed to start training:', error);
-      setFeedback(`Error: ${error.response?.data?.detail || 'Failed to start training'}`);
+      setFeedback(`Local tracker not available. Open or install the companion app, then start again.`);
     } finally {
       setLoading(false);
     }
@@ -121,7 +137,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       setFeedback('Stopping OpenCV tracker...');
 
       try {
-        await axios.post(`http://localhost:8000/api/gym-trainer/stop`, {
+        await axios.post(`${localTrackerUrl}/api/gym-trainer/stop`, {
           user_id: userId,
         });
         setFeedback('OpenCV tracker stop signal sent.');
@@ -139,7 +155,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
         }
         try {
           await axios.post(
-            `http://localhost:8000/api/gym-trainer/log-completed-workout`,
+            `${apiBaseUrl}/api/gym-trainer/log-completed-workout`,
             {
               user_id: userId,
               exercise_name: stats.exercise_name,
@@ -154,7 +170,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
           setFeedback('✅ Workout logged successfully!');
           try {
             await axios.post(
-              `http://localhost:8000/api/performance/score`,
+              `${apiBaseUrl}/api/performance/score`,
               {
                 session_data: {
                   session_id: `${userId}-${Date.now()}`,
@@ -193,7 +209,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
   const startPolling = () => {
     pollIntervalRef.current = setInterval(async () => {
       try {
-        const response = await axios.get(`http://localhost:8000/api/gym-trainer/latest-stats/${userId}`);
+        const response = await axios.get(`${localTrackerUrl}/api/gym-trainer/latest-stats/${userId}`);
         
         if (response.data.found) {
           const nextStats: TrainingStats = {
@@ -233,7 +249,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
               pollIntervalRef.current = null;
             }
             setFeedback('Target completed. Workout is ready to save.');
-            await axios.post(`http://localhost:8000/api/gym-trainer/stop`, { user_id: userId }).catch(() => null);
+            await axios.post(`${localTrackerUrl}/api/gym-trainer/stop`, { user_id: userId }).catch(() => null);
             await finalizeWorkout(nextStats);
           }
         }
@@ -281,6 +297,55 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
               <Play size={48} className="mx-auto text-zinc-600" />
               <p className="text-zinc-400 font-medium">Click Start to begin training</p>
               <p className="text-xs text-zinc-500">Ensure good lighting and camera angle</p>
+            </div>
+          )}
+        </div>
+
+        {/* Companion App Access */}
+        <div className="bg-zinc-950/70 border border-zinc-800 rounded-lg p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <div className="text-xs font-bold text-cyan-400 uppercase tracking-widest">Companion Tracker</div>
+              <p className="text-xs text-zinc-500 mt-1">
+                Live video runs on the user's device. Install once, then open the companion before starting a workout.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openDesktopCompanion}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-xs font-black uppercase tracking-wider text-cyan-300 hover:bg-cyan-500/20"
+            >
+              <ExternalLink size={15} />
+              Open Companion
+            </button>
+          </div>
+
+          {hasCompanionDownloads && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {desktopCompanionUrl && (
+                <a
+                  href={desktopCompanionUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-200 hover:border-cyan-500/50 hover:text-cyan-300"
+                >
+                  <Monitor size={15} />
+                  <Download size={14} />
+                  Download Desktop Tracker
+                </a>
+              )}
+              {mobileCompanionUrl && (
+                <a
+                  href={mobileCompanionUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-200 hover:border-cyan-500/50 hover:text-cyan-300"
+                >
+                  <Smartphone size={15} />
+                  <Download size={14} />
+                  Download Mobile Tracker
+                </a>
+              )}
             </div>
           )}
         </div>

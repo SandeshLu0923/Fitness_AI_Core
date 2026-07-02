@@ -21,6 +21,18 @@ Copy-Item -LiteralPath (Join-Path $root "backend\requirements.txt") -Destination
 Copy-Item -LiteralPath (Join-Path $root "backend\.python-version") -Destination (Join-Path $stagingDir "backend\.python-version") -ErrorAction SilentlyContinue
 Copy-Item -LiteralPath (Join-Path $root "backend\runtime.txt") -Destination (Join-Path $stagingDir "backend\runtime.txt") -ErrorAction SilentlyContinue
 
+$cacheDirs = Get-ChildItem -LiteralPath $stagingDir -Recurse -Directory -Filter "__pycache__"
+foreach ($cacheDir in $cacheDirs) {
+    Remove-Item -LiteralPath $cacheDir.FullName -Recurse -Force
+}
+
+$largeModelFiles = Get-ChildItem -LiteralPath (Join-Path $stagingDir "backend\app") -Recurse -File | Where-Object {
+    $_.Extension -in @(".joblib", ".pkl", ".csv")
+}
+foreach ($modelFile in $largeModelFiles) {
+    Remove-Item -LiteralPath $modelFile.FullName -Force
+}
+
 $secretEnv = Join-Path $stagingDir "desktop_companion\.env"
 if (Test-Path -LiteralPath $secretEnv) {
     Remove-Item -LiteralPath $secretEnv -Force

@@ -37,6 +37,18 @@ powershell -ExecutionPolicy Bypass -File .\desktop_companion\start.ps1
 
 Keep this terminal open while using live exercise tracking.
 
+## Optional Model Assets
+
+The tracker package is intentionally small. Large trained model files are released separately.
+
+After uploading the model chunk files to GitHub Releases, install them with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\desktop_companion\install_models.ps1
+```
+
+If model files are not installed, the tracker falls back to MediaPipe plus geometry-based rep detection.
+
 ## Package For GitHub Releases
 
 ```powershell
@@ -50,3 +62,17 @@ release\FitnessAI-Desktop-Tracker.zip
 ```
 
 to GitHub Releases.
+
+To create model release chunks:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\desktop_companion\package_models.ps1
+```
+
+Upload every file from:
+
+```text
+release\models\
+```
+
+to the same GitHub Release.

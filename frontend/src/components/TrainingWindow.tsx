@@ -40,6 +40,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
   const mobileCompanionUrl = import.meta.env.VITE_MOBILE_COMPANION_URL || '';
   const desktopDeepLink = import.meta.env.VITE_DESKTOP_COMPANION_DEEP_LINK || 'fitnessai://tracker';
   const hasCompanionDownloads = Boolean(desktopCompanionUrl || mobileCompanionUrl);
+  const localTrackerRequest = { skipApiRewrite: true } as any;
 
   const openDesktopCompanion = () => {
     const params = new URLSearchParams({
@@ -107,12 +108,16 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       setFeedback('Initializing OpenCV desktop tracker...');
       
       // Use backend OpenCV tracker for desktop-only performance
-      await axios.post(`${localTrackerUrl}/api/gym-trainer/start`, {
-        user_id: userId,
-        exercise_type: exerciseType.toLowerCase(),
-        target_sets: Math.max(1, Number(targetSets) || 1),
-        target_reps_per_set: Math.max(1, Number(targetReps) || 10),
-      });
+      await axios.post(
+        `${localTrackerUrl}/api/gym-trainer/start`,
+        {
+          user_id: userId,
+          exercise_type: exerciseType.toLowerCase(),
+          target_sets: Math.max(1, Number(targetSets) || 1),
+          target_reps_per_set: Math.max(1, Number(targetReps) || 10),
+        },
+        localTrackerRequest,
+      );
       setIsTraining(true);
       setFeedback('OpenCV tracking started. Switch to the native tracker window.');
       if (!pollIntervalRef.current) {
@@ -137,9 +142,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       setFeedback('Stopping OpenCV tracker...');
 
       try {
-        await axios.post(`${localTrackerUrl}/api/gym-trainer/stop`, {
-          user_id: userId,
-        });
+        await axios.post(`${localTrackerUrl}/api/gym-trainer/stop`, { user_id: userId }, localTrackerRequest);
         setFeedback('OpenCV tracker stop signal sent.');
       } catch (stopError) {
         console.warn('Failed to stop backend tracker:', stopError);
@@ -209,7 +212,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
   const startPolling = () => {
     pollIntervalRef.current = setInterval(async () => {
       try {
-        const response = await axios.get(`${localTrackerUrl}/api/gym-trainer/latest-stats/${userId}`);
+        const response = await axios.get(`${localTrackerUrl}/api/gym-trainer/latest-stats/${userId}`, localTrackerRequest);
         
         if (response.data.found) {
           const nextStats: TrainingStats = {
@@ -249,7 +252,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
               pollIntervalRef.current = null;
             }
             setFeedback('Target completed. Workout is ready to save.');
-            await axios.post(`${localTrackerUrl}/api/gym-trainer/stop`, { user_id: userId }).catch(() => null);
+            await axios.post(`${localTrackerUrl}/api/gym-trainer/stop`, { user_id: userId }, localTrackerRequest).catch(() => null);
             await finalizeWorkout(nextStats);
           }
         }

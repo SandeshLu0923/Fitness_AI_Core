@@ -6,6 +6,19 @@
 
 import axios, { type AxiosInstance, AxiosError, type AxiosResponse } from "axios";
 
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+function rewriteLocalBackendUrl(url?: string): string | undefined {
+  if (!url) return url;
+  return url.replace(/^http:\/\/localhost:8000/, API_BASE_URL).replace(/^http:\/\/127\.0\.0\.1:8000/, API_BASE_URL);
+}
+
+axios.interceptors.request.use((config) => {
+  if ((config as any).skipApiRewrite) return config;
+  config.url = rewriteLocalBackendUrl(config.url);
+  return config;
+});
+
 // API Response Type - consistent across all endpoints
 export interface ApiResponse<T = any> {
   status: "success" | "error";
@@ -15,7 +28,7 @@ export interface ApiResponse<T = any> {
 
 // Create Axios instance with base configuration
 const apiClient: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000",
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",

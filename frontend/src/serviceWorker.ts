@@ -139,6 +139,8 @@ function shouldCache(url: string): boolean {
 }
 
 // Background sync for deferred updates
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 self.addEventListener('sync', (event: Event) => {
   const syncEvent = event as SyncEvent;
   console.log('[ServiceWorker] Background sync event:', syncEvent.tag);
@@ -163,7 +165,7 @@ async function syncWorkouts(): Promise<void> {
       
       for (const workout of workouts) {
         try {
-          const response = await fetch('http://localhost:8000/api/gym-trainer/session', {
+          const response = await fetch(`${API_BASE_URL}/api/gym-trainer/session`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(workout),

@@ -10,6 +10,7 @@ import AITrainerSidebarPanel from './components/AITrainerSidebarPanel';
 import LoginRegisterPage from './components/LoginRegisterPage';
 import ProfileCompletion from './components/ProfileCompletion';
 import AdminDashboardTab from './components/AdminDashboardTab';
+import { API_BASE_URL } from './api/apiClient';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -42,8 +43,8 @@ export default function App() {
 
     try {
       const endpoint = storedUserRole === 'admin'
-        ? 'http://localhost:8000/api/auth/admin/me'
-        : 'http://localhost:8000/api/auth/me';
+        ? `${API_BASE_URL}/api/auth/admin/me`
+        : `${API_BASE_URL}/api/auth/me`;
       const response = await fetch(endpoint, {
         headers: { Authorization: `Bearer ${storedToken}` }
       });
@@ -123,7 +124,7 @@ export default function App() {
   const fetchNotifications = async () => {
     if (!userId) return;
     try {
-      const response = await fetch(`http://localhost:8000/api/plans/notifications/${encodeURIComponent(userId)}`);
+      const response = await fetch(`${API_BASE_URL}/api/plans/notifications/${encodeURIComponent(userId)}`);
       const data = await response.json();
       const readIds = getReadNotificationIds(userId);
       const unread = Array.isArray(data.notifications)

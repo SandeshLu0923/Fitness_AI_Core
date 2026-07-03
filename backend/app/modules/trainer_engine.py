@@ -11,11 +11,8 @@ from mediapipe.tasks.python import vision
 from mediapipe import Image, ImageFormat
 import numpy as np
 import joblib
-from pymongo import MongoClient
-from app.config import MONGODB_URL
-from pymongo.errors import PyMongoError
-from app.database import exercise_logs_col
 from app.modules.trainer_utils import calculate_angle, WeeklyMacrocyclePlan
+from app.modules.tracker_state import update_live_stats
 from app.modules.trainer_ui import construct_trainer_sidebar
 from app.services.pose_state_features import extract_pose_state_features, mediapipe_landmarks_to_points
 
@@ -514,11 +511,6 @@ def launch_native_opencv_tracker(
     target_sets = max(1, int(target_sets or 1))
     target_total_reps = target_reps_per_set * target_sets
     session_id = f"{user_id}-{canonical_exercise}-{int(datetime.datetime.utcnow().timestamp())}"
-    sync_client = None
-    sync_exercise_logs = None
-    db_write_queue: queue.Queue | None = None
-    db_writer_stop_event = threading.Event()
-    db_writer_thread = None
     cap = None
     pose_tracker = None
     hand_tracker = None
@@ -581,83 +573,11 @@ def launch_native_opencv_tracker(
             "position_state": pose_position_str,
         }
 
-    def write_live_stats(payload: dict):
-        if sync_exercise_logs is None:
-            return
-        sync_exercise_logs.replace_one(
-            {"user_id": user_id, "type": "live_tracking", "session_id": session_id},
-            payload,
-            upsert=True,
-        )
-
-    def db_writer_loop():
-        if db_write_queue is None:
-            return
-        while not db_writer_stop_event.is_set() or not db_write_queue.empty():
-            try:
-                payload = db_write_queue.get(timeout=0.25)
-            except queue.Empty:
-                continue
-            try:
-                write_live_stats(payload)
-            except Exception as write_error:
-                print(f"[DATABASE_WARNING] Live stats write skipped: {type(write_error).__name__}")
-            finally:
-                db_write_queue.task_done()
-
     def save_live_stats(session_active: bool = True, force: bool = False):
         payload = build_live_stats_payload(session_active)
-        if force or db_write_queue is None or db_writer_thread is None or not db_writer_thread.is_alive():
-            write_live_stats(payload)
-            return
-        try:
-            db_write_queue.put_nowait(payload)
-        except queue.Full:
-            try:
-                db_write_queue.get_nowait()
-                db_write_queue.task_done()
-            except queue.Empty:
-                pass
-            try:
-                db_write_queue.put_nowait(payload)
-            except queue.Full:
-                pass
+        update_live_stats(payload)
 
     try:
-        try:
-            sync_client = MongoClient(
-                MONGODB_URL,
-                tlsAllowInvalidCertificates=True,
-                serverSelectionTimeoutMS=5000,
-                socketTimeoutMS=10000,
-                connectTimeoutMS=10000,
-                retryWrites=False,
-            )
-            sync_exercise_logs = sync_client.fitness_ai.exercise_logs
-            db_write_queue = queue.Queue(maxsize=4)
-            db_writer_thread = threading.Thread(
-                target=db_writer_loop,
-                name=f"fitness-tracker-db-writer-{session_id}",
-                daemon=True,
-            )
-            db_writer_thread.start()
-            previous_progress = sync_exercise_logs.find_one(
-                {
-                    "user_id": user_id,
-                    "type": "live_tracking",
-                    "exercise_type": canonical_exercise,
-                    "exercise_completed": {"$ne": True},
-                },
-                sort=[("timestamp", -1)],
-            )
-            if previous_progress:
-                correct_reps = int(previous_progress.get("correct_reps") or 0)
-                incorrect_reps = int(previous_progress.get("incorrect_reps") or 0)
-                refresh_progress()
-                feedback_text = f"Resuming {display_exercise}: set {current_set}/{target_sets}, rep {current_set_reps}/{target_reps_per_set}."
-        except Exception as db_error:
-            print(f"[ENGINE_WARNING] Live stats DB connection unavailable: {db_error}")
-
         cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
         if not cap.isOpened():
             cap = cv2.VideoCapture(0)

@@ -26,11 +26,11 @@ foreach ($cacheDir in $cacheDirs) {
     Remove-Item -LiteralPath $cacheDir.FullName -Recurse -Force
 }
 
-$largeModelFiles = Get-ChildItem -LiteralPath (Join-Path $stagingDir "backend\app") -Recurse -File | Where-Object {
-    $_.Extension -in @(".joblib", ".pkl", ".csv")
+$datasetFiles = Get-ChildItem -LiteralPath (Join-Path $stagingDir "backend\app") -Recurse -File | Where-Object {
+    $_.Extension -eq ".csv"
 }
-foreach ($modelFile in $largeModelFiles) {
-    Remove-Item -LiteralPath $modelFile.FullName -Force
+foreach ($datasetFile in $datasetFiles) {
+    Remove-Item -LiteralPath $datasetFile.FullName -Force
 }
 
 $secretEnv = Join-Path $stagingDir "desktop_companion\.env"
@@ -41,4 +41,4 @@ if (Test-Path -LiteralPath $secretEnv) {
 Compress-Archive -Path (Join-Path $stagingDir "*") -DestinationPath $zipPath -Force
 
 Write-Host "Created $zipPath"
-Write-Host "Upload this file to GitHub Releases as FitnessAI-Desktop-Tracker.zip"
+Write-Host "Upload this single file to GitHub Releases as FitnessAI-Desktop-Tracker.zip"

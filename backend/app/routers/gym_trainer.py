@@ -8,7 +8,10 @@ from pydantic import BaseModel
 from pymongo.errors import PyMongoError
 from datetime import datetime
 from typing import Optional
+import os
 import time
+
+import httpx
 
 
 # ============================================================================
@@ -40,6 +43,7 @@ class StopTrackingRequest(BaseModel):
 # Router Setup
 # ============================================================================
 router = APIRouter(prefix="/api/gym-trainer", tags=["AI Gym Trainer"])
+BACKEND_API_URL = os.getenv("BACKEND_API_URL", "https://fitness-ai-core.onrender.com").rstrip("/")
 
 _service_cache = None
 def get_service():
@@ -107,19 +111,11 @@ async def stop_vision_session(payload: StopTrackingRequest):
 async def get_latest_workout_stats(user_id: str):
     """Retrieve live exercise statistics first, then aggregate today's completed workouts."""
     try:
-        from app.database import exercise_logs_col
+        from app.modules.tracker_state import get_latest_live_stats
         from datetime import date, timedelta
-        
+
         today = date.today().isoformat()
-        live_since = datetime.utcnow() - timedelta(minutes=45)
-        live_stat = await exercise_logs_col.find_one(
-            {
-                "user_id": user_id,
-                "type": "live_tracking",
-                "timestamp": {"$gte": live_since},
-            },
-            sort=[("timestamp", -1)]
-        )
+        live_stat = get_latest_live_stats(user_id)
 
         if live_stat:
             return {
@@ -141,6 +137,40 @@ async def get_latest_workout_stats(user_id: str):
                 "feedback": live_stat.get("feedback", ""),
                 "position_state": live_stat.get("position_state", ""),
                 "timestamp": live_stat.get("timestamp", "N/A"),
+                "date": today,
+            }
+
+        from app.database import exercise_logs_col
+        live_since = datetime.utcnow() - timedelta(minutes=45)
+        db_live_stat = await exercise_logs_col.find_one(
+            {
+                "user_id": user_id,
+                "type": "live_tracking",
+                "timestamp": {"$gte": live_since},
+            },
+            sort=[("timestamp", -1)]
+        )
+
+        if db_live_stat:
+            return {
+                "found": True,
+                "is_live": bool(db_live_stat.get("session_active")),
+                "exercise_name": db_live_stat.get("exercise_name", "Unknown"),
+                "sets_completed": int(db_live_stat.get("sets_completed") or 0),
+                "target_sets": int(db_live_stat.get("target_sets") or 0),
+                "target_reps_per_set": int(db_live_stat.get("target_reps_per_set") or 0),
+                "current_set": int(db_live_stat.get("current_set") or 1),
+                "current_set_reps": int(db_live_stat.get("current_set_reps") or 0),
+                "correct_reps": int(db_live_stat.get("correct_reps") or 0),
+                "incorrect_reps": int(db_live_stat.get("incorrect_reps") or 0),
+                "total_reps": int(db_live_stat.get("total_reps") or 0),
+                "target_total_reps": int(db_live_stat.get("target_total_reps") or 0),
+                "progress_percent": float(db_live_stat.get("progress_percent") or 0),
+                "exercise_completed": bool(db_live_stat.get("exercise_completed")),
+                "accuracy": float(db_live_stat.get("accuracy") or 0),
+                "feedback": db_live_stat.get("feedback", ""),
+                "position_state": db_live_stat.get("position_state", ""),
+                "timestamp": db_live_stat.get("timestamp", "N/A"),
                 "date": today,
             }
         
@@ -196,6 +226,19 @@ async def get_latest_workout_stats(user_id: str):
             ]
         }
 
+    except RuntimeError as e:
+        if "Database not initialized" in str(e) or "Admin database not initialized" in str(e):
+            return {
+                "found": False,
+                "exercise_name": "None",
+                "sets_completed": 0,
+                "correct_reps": 0,
+                "incorrect_reps": 0,
+                "timestamp": "No local stats yet",
+                "message": "Start a workout to track progress",
+            }
+        print(f"[ERROR] Failed to retrieve stats: {e}")
+        raise HTTPException(status_code=500, detail="Unable to load workout statistics at this time.")
     except PyMongoError as e:
         print(f"[DB_ERROR] Failed to load latest stats: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to load latest workout stats.")
@@ -253,6 +296,21 @@ async def log_completed_workout(payload: LogCompletedWorkoutRequest):
                 "accuracy": round((payload.correct_reps / max(payload.correct_reps + payload.incorrect_reps, 1)) * 100, 2)
             }
         }
+    except RuntimeError as e:
+        if "Database not initialized" not in str(e):
+            print(f"[LOG_WORKOUT_ERROR] {e}")
+            raise HTTPException(status_code=500, detail="Failed to log workout")
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"{BACKEND_API_URL}/api/gym-trainer/log-completed-workout",
+                    json=payload.model_dump(),
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception as forward_error:
+            print(f"[LOG_WORKOUT_FORWARD_ERROR] {forward_error}")
+            raise HTTPException(status_code=502, detail="Failed to forward workout to backend")
     except Exception as e:
         print(f"[LOG_WORKOUT_ERROR] {e}")
         raise HTTPException(status_code=500, detail="Failed to log workout")

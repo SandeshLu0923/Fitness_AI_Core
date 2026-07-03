@@ -16,7 +16,7 @@ Install Python 3.11 first. Then run from the project folder:
 powershell -ExecutionPolicy Bypass -File .\desktop_companion\install.ps1
 ```
 
-Edit:
+For the installer release, no Python or MongoDB setup is required. For the portable developer package, edit:
 
 ```text
 desktop_companion\.env
@@ -25,7 +25,7 @@ desktop_companion\.env
 Set:
 
 ```env
-MONGODB_URL=your_mongodb_atlas_connection_string
+BACKEND_API_URL=https://fitness-ai-core.onrender.com
 FITNESS_AI_WEB_ORIGIN=https://fitness-ai-core.vercel.app
 ```
 
@@ -37,19 +37,35 @@ powershell -ExecutionPolicy Bypass -File .\desktop_companion\start.ps1
 
 Keep this terminal open while using live exercise tracking.
 
-## Optional Model Assets
+## Model Assets
 
-The tracker package is intentionally small. Large trained model files are released separately.
+The trained tracker model files are bundled inside the desktop tracker release zip. No separate model download is required.
 
-After uploading the model chunk files to GitHub Releases, install them with:
+If a future release ships models separately, run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\desktop_companion\install_models.ps1
 ```
 
-If model files are not installed, the tracker falls back to MediaPipe plus geometry-based rep detection.
-
 ## Package For GitHub Releases
+
+### Option A: Windows Installer
+
+Install Inno Setup 6, then run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\desktop_companion\build_installer.ps1
+```
+
+Upload:
+
+```text
+release\installer\FitnessAI-Desktop-Tracker-Setup.exe
+```
+
+to GitHub Releases. This is the recommended release for normal users.
+
+### Option B: Portable Zip
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\desktop_companion\package.ps1
@@ -61,18 +77,4 @@ Upload:
 release\FitnessAI-Desktop-Tracker.zip
 ```
 
-to GitHub Releases.
-
-To create model release chunks:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\desktop_companion\package_models.ps1
-```
-
-Upload every file from:
-
-```text
-release\models\
-```
-
-to the same GitHub Release.
+to GitHub Releases as the only required release asset.

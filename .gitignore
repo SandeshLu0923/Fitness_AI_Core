@@ -48,4 +48,6 @@ Thumbs.db
 # Companion app local/build artifacts
 release/
 .desktop_companion_venv/
+.desktop_companion_build_venv/
+build/
 desktop_companion/.env

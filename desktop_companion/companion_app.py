@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "backend", ".env"))
 
-from app.database import get_db
 from app.routers import gym_trainer
 
 ALLOWED_ORIGINS = [
@@ -39,7 +38,6 @@ app.include_router(gym_trainer.router)
 
 @app.on_event("startup")
 async def startup_event():
-    await get_db()
     print("[COMPANION] Desktop tracker companion is ready.")
 
 

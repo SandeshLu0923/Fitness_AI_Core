@@ -22,7 +22,7 @@ if not GROQ_API_KEY:
     )
 
 if not MONGODB_URL:
-    raise ValueError(
-        "Missing MONGODB_URL in environment configuration. "
-        "Please set MONGODB_URL in your .env file or environment variables."
+    print(
+        "[CONFIG_WARNING] Missing MONGODB_URL. "
+        "Database-backed routes will fail until it is configured."
     )

@@ -8,7 +8,7 @@ AppId={{B5C723B2-9816-40E5-8E6A-61C27819A922}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={autopf}\Fitness AI Desktop Tracker
+DefaultDirName={localappdata}\Programs\Fitness AI Desktop Tracker
 DefaultGroupName=Fitness AI Core
 DisableProgramGroupPage=yes
 OutputDir=..\release\installer
@@ -18,6 +18,7 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+PrivilegesRequired=lowest
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -31,6 +32,11 @@ Source: "..\dist\FitnessAI-Desktop-Tracker\*"; DestDir: "{app}"; Flags: ignoreve
 [Icons]
 Name: "{group}\Fitness AI Desktop Tracker"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\Fitness AI Desktop Tracker"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+
+[Registry]
+Root: HKCU; Subkey: "Software\Classes\fitnessai"; ValueType: string; ValueName: ""; ValueData: "URL:Fitness AI Desktop Tracker"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\fitnessai"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKCU; Subkey: "Software\Classes\fitnessai\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,Fitness AI Desktop Tracker}"; Flags: nowait postinstall skipifsilent

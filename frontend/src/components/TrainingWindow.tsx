@@ -42,7 +42,15 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
   const hasCompanionDownloads = Boolean(desktopCompanionUrl || mobileCompanionUrl);
   const localTrackerRequest = { skipApiRewrite: true } as any;
 
-  const openDesktopCompanion = () => {
+  const openDesktopCompanion = async () => {
+    try {
+      await axios.get(`${localTrackerUrl}/health`, localTrackerRequest);
+      setFeedback('Desktop companion is already running. You can start the workout.');
+      return;
+    } catch {
+      // Fall through to the installed-app deep link.
+    }
+
     const params = new URLSearchParams({
       userId,
       exercise: exerciseType.toLowerCase(),
@@ -50,6 +58,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       reps: String(Math.max(1, Number(targetReps) || 10)),
     });
     window.location.href = `${desktopDeepLink}?${params.toString()}`;
+    setFeedback('Opening desktop companion. If Windows asks, allow the Fitness AI app to open.');
   };
 
   const finalizeWorkout = async (finalStats: TrainingStats) => {

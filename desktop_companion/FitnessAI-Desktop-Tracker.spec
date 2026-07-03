@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_dynamic_libs
 
 root = Path(SPECPATH).parent
 
@@ -12,11 +13,18 @@ datas = [
     (str(root / "backend" / "app" / "exercise_phase_models.joblib"), "app"),
 ]
 
+binaries = []
+binaries += collect_dynamic_libs("numpy")
+try:
+    binaries += collect_dynamic_libs("cv2")
+except Exception:
+    pass
+
 
 a = Analysis(
     [str(root / "desktop_companion" / "launcher.py")],
     pathex=[str(root), str(root / "backend")],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=[
         "desktop_companion.companion_app",
@@ -28,6 +36,19 @@ a = Analysis(
         "sklearn.neighbors._classification",
         "sklearn.svm._classes",
         "sklearn.preprocessing._label",
+        "numpy._core",
+        "numpy._core._exceptions",
+        "numpy._core._multiarray_umath",
+        "numpy.core",
+        "numpy.core._multiarray_umath",
+        "cv2",
+        "mediapipe.python.solutions.pose",
+        "mediapipe.python.solutions.hands",
+        "mediapipe.python.solutions.drawing_utils",
+        "mediapipe.modules.pose_landmark",
+        "mediapipe.modules.pose_detection",
+        "mediapipe.modules.hand_landmark",
+        "mediapipe.modules.palm_detection",
     ],
     hookspath=[],
     hooksconfig={},

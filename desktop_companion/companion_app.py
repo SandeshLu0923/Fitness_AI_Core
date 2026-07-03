@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "backend", ".env"))
+os.environ.setdefault("FITNESS_AI_COMPANION", "1")
 
 from app.routers import gym_trainer
 

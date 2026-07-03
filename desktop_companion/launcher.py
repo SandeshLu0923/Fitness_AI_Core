@@ -55,6 +55,7 @@ def bundled_root() -> Path:
 def main() -> None:
     env_path = ensure_user_env()
     load_dotenv(env_path)
+    os.environ.setdefault("FITNESS_AI_COMPANION", "1")
 
     root = bundled_root()
     backend_path = root / "backend"

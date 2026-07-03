@@ -8,6 +8,20 @@ $distApp = Join-Path $root "dist\FitnessAI-Desktop-Tracker"
 $installerScript = Join-Path $PSScriptRoot "installer.iss"
 $installerOutput = Join-Path $root "release\installer"
 
+function Invoke-Checked {
+    param(
+        [Parameter(Mandatory = $true)]
+        [scriptblock] $Command,
+        [Parameter(Mandatory = $true)]
+        [string] $Description
+    )
+
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Description failed with exit code $LASTEXITCODE"
+    }
+}
+
 function Resolve-Python311 {
     $projectPython = Join-Path $root "venv\Scripts\python.exe"
     if (Test-Path -LiteralPath $projectPython) {
@@ -61,13 +75,13 @@ if (-not (Test-Path -LiteralPath $pythonExe)) {
 }
 
 Write-Host "Installing build dependencies..."
-& $pythonExe -m pip install --upgrade pip
-& $pythonExe -m pip install -r (Join-Path $root "backend\requirements.txt")
-& $pythonExe -m pip install pyinstaller==6.10.0
+Invoke-Checked { & $pythonExe -m pip install --upgrade pip } "pip upgrade"
+Invoke-Checked { & $pythonExe -m pip install -r (Join-Path $root "backend\requirements.txt") } "requirements install"
+Invoke-Checked { & $pythonExe -m pip install pyinstaller==6.10.0 } "PyInstaller install"
 
 Write-Host "Building desktop app with PyInstaller..."
 Set-Location -LiteralPath $root
-& $pythonExe -m PyInstaller --clean --noconfirm $specPath
+Invoke-Checked { & $pythonExe -m PyInstaller --clean --noconfirm $specPath } "PyInstaller build"
 
 if (-not (Test-Path -LiteralPath $distApp)) {
     throw "PyInstaller output was not created: $distApp"
@@ -94,7 +108,7 @@ if (-not $iscc) {
 if ($iscc) {
     New-Item -ItemType Directory -Path $installerOutput -Force | Out-Null
     Write-Host "Building Windows installer with Inno Setup..."
-    & $iscc.Source $installerScript
+    Invoke-Checked { & $iscc.Source $installerScript } "Inno Setup build"
     Write-Host "Installer created: $(Join-Path $installerOutput 'FitnessAI-Desktop-Tracker-Setup.exe')"
 } else {
     Write-Warning "Inno Setup was not found. Install Inno Setup 6 to create Setup.exe."

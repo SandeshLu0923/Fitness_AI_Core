@@ -40,6 +40,7 @@ a = Analysis(
         "numpy._core",
         "numpy._core._exceptions",
         "numpy._core._multiarray_umath",
+        "numpy._core.multiarray",
         "numpy.core",
         "numpy.core._multiarray_umath",
         "cv2",

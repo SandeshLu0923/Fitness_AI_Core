@@ -5,6 +5,8 @@ $venvPath = Join-Path $root ".desktop_companion_venv"
 $pythonExe = Join-Path $venvPath "Scripts\python.exe"
 $specPath = Join-Path $PSScriptRoot "FitnessAI-Desktop-Tracker.spec"
 $distApp = Join-Path $root "dist\FitnessAI-Desktop-Tracker"
+$distPath = Join-Path $root "dist"
+$workPath = Join-Path $root "build"
 $installerScript = Join-Path $PSScriptRoot "installer.iss"
 $installerOutput = Join-Path $root "release\installer"
 
@@ -80,8 +82,12 @@ Invoke-Checked { & $pythonExe -m pip install -r (Join-Path $root "backend\requir
 Invoke-Checked { & $pythonExe -m pip install pyinstaller==6.10.0 } "PyInstaller install"
 
 Write-Host "Building desktop app with PyInstaller..."
+if (Test-Path -LiteralPath $distApp) {
+    Write-Host "Removing stale dist output: $distApp"
+    Remove-Item -LiteralPath $distApp -Recurse -Force
+}
 Set-Location -LiteralPath $root
-Invoke-Checked { & $pythonExe -m PyInstaller --clean --noconfirm $specPath } "PyInstaller build"
+Invoke-Checked { & $pythonExe -m PyInstaller --clean --noconfirm --distpath $distPath --workpath $workPath $specPath } "PyInstaller build"
 
 if (-not (Test-Path -LiteralPath $distApp)) {
     throw "PyInstaller output was not created: $distApp"

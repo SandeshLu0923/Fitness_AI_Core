@@ -4,7 +4,7 @@
 #define MyAppExeName "FitnessAI-Desktop-Tracker.exe"
 
 [Setup]
-AppId={{B5C723B2-9816-40E5-8E6A-61C27819A922}
+AppId={{B5C723B2-9816-40E5-8E6A-61C27819A922}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}

@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from pathlib import Path
-from PyInstaller.utils.hooks import collect_dynamic_libs
+from PyInstaller.utils.hooks import collect_dynamic_libs, collect_submodules
 
 root = Path(SPECPATH).parent
 
@@ -15,6 +15,7 @@ datas = [
 
 binaries = []
 binaries += collect_dynamic_libs("numpy")
+binaries += collect_dynamic_libs("scipy")
 try:
     binaries += collect_dynamic_libs("cv2")
 except Exception:
@@ -49,12 +50,11 @@ a = Analysis(
         "mediapipe.modules.pose_detection",
         "mediapipe.modules.hand_landmark",
         "mediapipe.modules.palm_detection",
-    ],
+    ] + collect_submodules("scipy"),
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        "matplotlib",
         "pytest",
         "IPython",
         "notebook",

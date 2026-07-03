@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$venvPath = Join-Path $root ".desktop_companion_build_venv"
+$venvPath = Join-Path $root ".desktop_companion_venv"
 $pythonExe = Join-Path $venvPath "Scripts\python.exe"
 $specPath = Join-Path $PSScriptRoot "FitnessAI-Desktop-Tracker.spec"
 $distApp = Join-Path $root "dist\FitnessAI-Desktop-Tracker"

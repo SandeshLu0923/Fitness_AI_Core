@@ -2,9 +2,12 @@ import os
 import sys
 from pathlib import Path
 import io
+import threading
 
 import uvicorn
 from dotenv import load_dotenv
+import pystray
+from PIL import Image
 
 
 APP_NAME = "Fitness AI Desktop Tracker"
@@ -53,26 +56,32 @@ def bundled_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def create_icon_image():
+    """Create a simple icon for the system tray."""
+    # Create a simple colored square as icon
+    image = Image.new('RGB', (64, 64), color=(0, 200, 255))
+    return image
+
+
+def on_exit(icon, item):
+    """Handle exit from system tray."""
+    icon.stop()
+    sys.exit(0)
+
+
+def run_system_tray():
+    """Run the system tray icon."""
+    icon_image = create_icon_image()
+    menu = pystray.Menu(
+        pystray.MenuItem("Exit", on_exit)
+    )
+    icon = pystray.Icon("fitness_ai", icon_image, menu=menu)
+    icon.run()
+
+
 def main() -> None:
-    # Allow starting via custom URL scheme or --from-backend flag
-    # Check if started via URL scheme (fitnessai://start)
-    url_scheme_started = False
-    if len(sys.argv) > 1:
-        for arg in sys.argv[1:]:
-            if arg.startswith('fitnessai://') or 'fitnessai' in arg.lower():
-                url_scheme_started = True
-                break
-    
-    if not url_scheme_started and "--from-backend" not in sys.argv:
-        import tkinter as tk
-        from tkinter import messagebox
-        root = tk.Tk()
-        root.withdraw()
-        messagebox.showerror(
-            "Fitness AI Desktop Tracker",
-            "This app can only be started from the web interface.\n\nPlease use the 'Start Training' button on the Fitness AI website to begin a workout session."
-        )
-        sys.exit(1)
+    # Allow starting from desktop shortcut or command line
+    # Remove URL scheme restriction for manual launch approach
     
     # Fix for PyInstaller no-console mode: redirect stdout/stderr if they are None
     if sys.stdout is None:
@@ -97,6 +106,10 @@ def main() -> None:
     print(f"{APP_NAME} starting on http://{host}:{port}")
     print(f"Config file: {env_path}")
     print("Keep this window open while using live exercise tracking.")
+
+    # Start system tray icon in a separate thread
+    tray_thread = threading.Thread(target=run_system_tray, daemon=True)
+    tray_thread.start()
 
     uvicorn.run(
         "desktop_companion.companion_app:app",

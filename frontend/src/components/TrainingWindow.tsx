@@ -138,16 +138,6 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
     }
   };
 
-  // Launch URL scheme without navigating away from current page
-  const launchURLScheme = (url: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   // Start training session
   const startTraining = async () => {
     try {

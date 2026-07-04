@@ -153,61 +153,24 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
     try {
       setLoading(true);
       completionHandledRef.current = false;
-      setFeedback('Starting desktop companion app...');
       
-      // First, try to start the companion app via backend
-      let companionLaunched = false;
+      // Check if companion app is running (manual launch approach)
+      setFeedback('Checking companion app status...');
+      let companionRunning = false;
       try {
-        const startResponse = await axios.post(`${apiBaseUrl}/api/gym-trainer/companion/start`);
-        if (startResponse.data.status === 'not_supported') {
-          // Backend is on cloud, try to launch via custom URL scheme
-          console.log('Backend cannot start companion, trying custom URL scheme');
-          launchURLScheme('fitnessai://start');
-          setFeedback('Launching desktop companion app...');
-          companionLaunched = true;
-        } else {
-          setFeedback('Desktop companion started. Initializing OpenCV tracker...');
-          companionLaunched = true;
-          // Wait a moment for the companion app to start
-          await new Promise(resolve => setTimeout(resolve, 2000));
+        const healthResponse = await axios.get(`${localTrackerUrl}/health`, { timeout: 2000 });
+        if (healthResponse.data.service === 'Fitness AI Desktop Tracker Companion') {
+          companionRunning = true;
+          setFeedback('Companion app detected. Initializing tracker...');
         }
-      } catch (companionError) {
-        console.warn('Failed to start companion app:', companionError);
-        // Try custom URL scheme as fallback
-        try {
-          launchURLScheme('fitnessai://start');
-          setFeedback('Launching desktop companion app...');
-          companionLaunched = true;
-        } catch {
-          setFeedback('Could not start companion app. Please launch it manually from your desktop.');
-          setLoading(false);
-          return;
-        }
+      } catch {
+        // Companion not running
       }
       
-      // If companion was launched via URL scheme, wait for it to start and verify
-      if (companionLaunched) {
-        setFeedback('Waiting for companion app to start...');
-        let retries = 0;
-        const maxRetries = 30;
-        while (retries < maxRetries) {
-          try {
-            const healthResponse = await axios.get(`${localTrackerUrl}/health`, { timeout: 1000 });
-            if (healthResponse.data.service === 'Fitness AI Desktop Tracker Companion') {
-              setFeedback('Companion app started. Initializing tracker...');
-              break;
-            }
-          } catch {
-            // Companion not ready yet
-          }
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          retries++;
-        }
-        if (retries >= maxRetries) {
-          setFeedback('Companion app did not start in time. Please try again.');
-          setLoading(false);
-          return;
-        }
+      if (!companionRunning) {
+        setFeedback('Companion app is not running. Please launch it from your desktop shortcut or system tray icon, then try again.');
+        setLoading(false);
+        return;
       }
       
       // Then start the vision session

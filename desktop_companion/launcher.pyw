@@ -56,10 +56,15 @@ def bundled_root() -> Path:
 def main() -> None:
     # Allow starting via custom URL scheme or --from-backend flag
     # Check if started via URL scheme (fitnessai://start)
-    if len(sys.argv) > 1 and sys.argv[1].startswith('fitnessai://'):
-        # Started via URL scheme, treat as valid start
-        pass
-    elif "--from-backend" not in sys.argv:
+    url_scheme_started = False
+    if len(sys.argv) > 1:
+        for arg in sys.argv[1:]:
+            if arg.startswith('fitnessai://'):
+                url_scheme_started = True
+                print(f"Started via URL scheme: {arg}")
+                break
+    
+    if not url_scheme_started and "--from-backend" not in sys.argv:
         import tkinter as tk
         from tkinter import messagebox
         root = tk.Tk()

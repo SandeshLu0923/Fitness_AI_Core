@@ -44,6 +44,18 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
 
   const checkCompanionStatus = async () => {
     try {
+      // First, try to detect local companion server
+      try {
+        const localHealthResponse = await axios.get(`${localTrackerUrl}/health`, { timeout: 2000 });
+        if (localHealthResponse.data.status === 'healthy') {
+          setCompanionStatus('running');
+          return;
+        }
+      } catch (localError) {
+        console.log('Local companion server not responding:', localError);
+      }
+      
+      // Fallback to backend check
       const statusResponse = await axios.get(`${apiBaseUrl}/api/gym-trainer/companion/status`);
       if (statusResponse.data.status === 'running') {
         setCompanionStatus('running');
@@ -56,7 +68,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
         setCompanionStatus('installed');
       } else if (installedResponse.data.status === 'not_supported') {
         // Backend is on cloud (Linux), can't check Windows paths
-        // Default to not_installed - user needs to manually install
+        // Try to detect via URL scheme registration
         setCompanionStatus('not_installed');
       } else {
         setCompanionStatus('not_installed');

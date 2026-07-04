@@ -140,16 +140,12 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
 
   // Launch URL scheme without navigating away from current page
   const launchURLScheme = (url: string) => {
-    // Create an invisible iframe to trigger the URL scheme
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = url;
-    document.body.appendChild(iframe);
-    
-    // Remove iframe after a short delay
-    setTimeout(() => {
-      document.body.removeChild(iframe);
-    }, 100);
+    const link = document.createElement('a');
+    link.href = url;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Start training session

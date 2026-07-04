@@ -54,12 +54,16 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       const installedResponse = await axios.get(`${apiBaseUrl}/api/gym-trainer/companion/installed`);
       if (installedResponse.data.status === 'installed') {
         setCompanionStatus('installed');
+      } else if (installedResponse.data.status === 'not_supported') {
+        // Backend is on cloud (Linux), can't check Windows paths
+        // Assume installed if user has download links available
+        setCompanionStatus('installed');
       } else {
         setCompanionStatus('not_installed');
       }
     } catch (error) {
       console.log('Backend companion check failed, assuming not installed:', error);
-      // If backend check fails (likely not deployed yet), assume not installed
+      // If backend check fails, assume not installed
       setCompanionStatus('not_installed');
     }
   };

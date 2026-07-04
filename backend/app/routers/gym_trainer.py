@@ -63,6 +63,10 @@ _companion_process = None
 
 def get_companion_exe_path():
     """Get the path to the desktop companion executable."""
+    # On non-Windows systems, companion app cannot be installed
+    if os.name != 'nt':
+        return None
+    
     # Try to find the companion app in common installation locations
     possible_paths = [
         os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Fitness AI Desktop Tracker", "FitnessAI-Desktop-Tracker.exe"),
@@ -162,6 +166,9 @@ async def check_companion_installed():
         exe_path = get_companion_exe_path()
         if exe_path:
             return {"status": "installed", "path": exe_path}
+        # On non-Windows systems, return not_supported instead of not_installed
+        if os.name != 'nt':
+            return {"status": "not_supported", "message": "Companion app only supported on Windows"}
         return {"status": "not_installed"}
     except Exception as e:
         print(f"[ERROR] Failed to check companion installation: {e}")

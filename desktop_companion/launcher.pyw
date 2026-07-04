@@ -54,8 +54,12 @@ def bundled_root() -> Path:
 
 
 def main() -> None:
-    # Prevent manual opening - require --from-backend flag
-    if "--from-backend" not in sys.argv:
+    # Allow starting via custom URL scheme or --from-backend flag
+    # Check if started via URL scheme (fitnessai://start)
+    if len(sys.argv) > 1 and sys.argv[1].startswith('fitnessai://'):
+        # Started via URL scheme, treat as valid start
+        pass
+    elif "--from-backend" not in sys.argv:
         import tkinter as tk
         from tkinter import messagebox
         root = tk.Tk()

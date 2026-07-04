@@ -133,17 +133,34 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       completionHandledRef.current = false;
       setFeedback('Starting desktop companion app...');
       
-      // First, start the companion app via backend
+      // First, try to start the companion app via backend
+      let companionStarted = false;
       try {
-        await axios.post(`${apiBaseUrl}/api/gym-trainer/companion/start`);
-        setFeedback('Desktop companion started. Initializing OpenCV tracker...');
-        // Wait a moment for the companion app to start
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        const startResponse = await axios.post(`${apiBaseUrl}/api/gym-trainer/companion/start`);
+        if (startResponse.data.status === 'not_supported') {
+          // Backend is on cloud, try to launch via custom URL scheme
+          console.log('Backend cannot start companion, trying custom URL scheme');
+          window.location.href = 'fitnessai://start';
+          companionStarted = true;
+          setFeedback('Launching desktop companion app...');
+        } else {
+          setFeedback('Desktop companion started. Initializing OpenCV tracker...');
+          companionStarted = true;
+          // Wait a moment for the companion app to start
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
       } catch (companionError) {
         console.warn('Failed to start companion app:', companionError);
-        setFeedback('Could not start companion app. Ensure it is installed.');
-        setLoading(false);
-        return;
+        // Try custom URL scheme as fallback
+        try {
+          window.location.href = 'fitnessai://start';
+          companionStarted = true;
+          setFeedback('Launching desktop companion app...');
+        } catch {
+          setFeedback('Could not start companion app. Please launch it manually from your desktop.');
+          setLoading(false);
+          return;
+        }
       }
       
       // Then start the vision session

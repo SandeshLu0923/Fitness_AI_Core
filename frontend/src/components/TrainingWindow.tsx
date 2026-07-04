@@ -189,7 +189,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       if (companionLaunched) {
         setFeedback('Waiting for companion app to start...');
         let retries = 0;
-        const maxRetries = 10;
+        const maxRetries = 30;
         while (retries < maxRetries) {
           try {
             const healthResponse = await axios.get(`${localTrackerUrl}/health`, { timeout: 1000 });

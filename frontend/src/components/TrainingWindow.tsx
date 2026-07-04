@@ -58,7 +58,8 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
         setCompanionStatus('not_installed');
       }
     } catch (error) {
-      // If backend check fails, assume not installed
+      console.log('Backend companion check failed, assuming not installed:', error);
+      // If backend check fails (likely not deployed yet), assume not installed
       setCompanionStatus('not_installed');
     }
   };
@@ -380,37 +381,43 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
             </div>
           </div>
           
-          {companionStatus === 'not_installed' && hasCompanionDownloads && (
+          {companionStatus === 'not_installed' && (
             <div className="space-y-2">
               <p className="text-xs text-zinc-500">
                 Install the desktop companion app to enable AI-powered exercise tracking.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {desktopCompanionUrl && (
-                  <a
-                    href={desktopCompanionUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-200 hover:border-cyan-500/50 hover:text-cyan-300"
-                  >
-                    <Monitor size={15} />
-                    <Download size={14} />
-                    Download Desktop Tracker
-                  </a>
-                )}
-                {mobileCompanionUrl && (
-                  <a
-                    href={mobileCompanionUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-200 hover:border-cyan-500/50 hover:text-cyan-300"
-                  >
-                    <Smartphone size={15} />
-                    <Download size={14} />
-                    Download Mobile Tracker
-                  </a>
-                )}
-              </div>
+              {hasCompanionDownloads ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {desktopCompanionUrl && (
+                    <a
+                      href={desktopCompanionUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-200 hover:border-cyan-500/50 hover:text-cyan-300"
+                    >
+                      <Monitor size={15} />
+                      <Download size={14} />
+                      Download Desktop Tracker
+                    </a>
+                  )}
+                  {mobileCompanionUrl && (
+                    <a
+                      href={mobileCompanionUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-200 hover:border-cyan-500/50 hover:text-cyan-300"
+                    >
+                      <Smartphone size={15} />
+                      <Download size={14} />
+                      Download Mobile Tracker
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-zinc-400 italic">
+                  Download links not configured. Please contact administrator for the companion app installer.
+                </p>
+              )}
             </div>
           )}
           

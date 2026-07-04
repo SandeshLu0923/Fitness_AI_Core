@@ -138,6 +138,20 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
     }
   };
 
+  // Launch URL scheme without navigating away from current page
+  const launchURLScheme = (url: string) => {
+    // Create an invisible iframe to trigger the URL scheme
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    
+    // Remove iframe after a short delay
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+    }, 100);
+  };
+
   // Start training session
   const startTraining = async () => {
     try {
@@ -152,7 +166,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
         if (startResponse.data.status === 'not_supported') {
           // Backend is on cloud, try to launch via custom URL scheme
           console.log('Backend cannot start companion, trying custom URL scheme');
-          window.location.href = 'fitnessai://start';
+          launchURLScheme('fitnessai://start');
           setFeedback('Launching desktop companion app...');
           companionLaunched = true;
         } else {
@@ -165,7 +179,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
         console.warn('Failed to start companion app:', companionError);
         // Try custom URL scheme as fallback
         try {
-          window.location.href = 'fitnessai://start';
+          launchURLScheme('fitnessai://start');
           setFeedback('Launching desktop companion app...');
           companionLaunched = true;
         } catch {

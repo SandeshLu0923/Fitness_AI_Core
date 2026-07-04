@@ -44,10 +44,12 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
 
   const checkCompanionStatus = async () => {
     try {
-      // First, try to detect local companion server
+      // First, try to detect local companion server with specific validation
       try {
         const localHealthResponse = await axios.get(`${localTrackerUrl}/health`, { timeout: 2000 });
-        if (localHealthResponse.data.status === 'healthy') {
+        // Validate it's actually the companion app by checking service name
+        if (localHealthResponse.data.status === 'healthy' && 
+            localHealthResponse.data.service === 'Fitness AI Desktop Tracker Companion') {
           setCompanionStatus('running');
           return;
         }
@@ -68,14 +70,12 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
         setCompanionStatus('installed');
       } else if (installedResponse.data.status === 'not_supported') {
         // Backend is on cloud (Linux), can't check Windows paths
-        // Try to detect via URL scheme registration
         setCompanionStatus('not_installed');
       } else {
         setCompanionStatus('not_installed');
       }
     } catch (error) {
       console.log('Backend companion check failed, assuming not installed:', error);
-      // If backend check fails, assume not installed
       setCompanionStatus('not_installed');
     }
   };
@@ -146,6 +146,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       setFeedback('Starting desktop companion app...');
       
       // First, try to start the companion app via backend
+      let companionLaunched = false;
       try {
         const startResponse = await axios.post(`${apiBaseUrl}/api/gym-trainer/companion/start`);
         if (startResponse.data.status === 'not_supported') {
@@ -153,8 +154,10 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
           console.log('Backend cannot start companion, trying custom URL scheme');
           window.location.href = 'fitnessai://start';
           setFeedback('Launching desktop companion app...');
+          companionLaunched = true;
         } else {
           setFeedback('Desktop companion started. Initializing OpenCV tracker...');
+          companionLaunched = true;
           // Wait a moment for the companion app to start
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
@@ -164,8 +167,34 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
         try {
           window.location.href = 'fitnessai://start';
           setFeedback('Launching desktop companion app...');
+          companionLaunched = true;
         } catch {
           setFeedback('Could not start companion app. Please launch it manually from your desktop.');
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // If companion was launched via URL scheme, wait for it to start and verify
+      if (companionLaunched) {
+        setFeedback('Waiting for companion app to start...');
+        let retries = 0;
+        const maxRetries = 10;
+        while (retries < maxRetries) {
+          try {
+            const healthResponse = await axios.get(`${localTrackerUrl}/health`, { timeout: 1000 });
+            if (healthResponse.data.service === 'Fitness AI Desktop Tracker Companion') {
+              setFeedback('Companion app started. Initializing tracker...');
+              break;
+            }
+          } catch {
+            // Companion not ready yet
+          }
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          retries++;
+        }
+        if (retries >= maxRetries) {
+          setFeedback('Companion app did not start in time. Please try again.');
           setLoading(false);
           return;
         }
@@ -449,9 +478,14 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-zinc-400 italic">
-                  Download links not configured. Please contact administrator for the companion app installer.
-                </p>
+                <div className="space-y-2">
+                  <p className="text-xs text-zinc-400 italic">
+                    Download link not configured in environment. Contact administrator for the companion app installer.
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    <span className="text-cyan-400">Manual setup:</span> Download the installer from the GitHub releases page and install it manually.
+                  </p>
+                </div>
               )}
             </div>
           )}

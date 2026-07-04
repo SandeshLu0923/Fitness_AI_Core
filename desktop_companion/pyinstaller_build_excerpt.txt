@@ -1,0 +1,200 @@
+﻿219899 INFO: Analyzing hidden import 'scipy.special._precompute.lambertw'
+219924 INFO: Analyzing hidden import 'scipy.special._precompute.loggamma'
+219931 INFO: Analyzing hidden import 
+'scipy.special._precompute.struve_convergence'
+219945 INFO: Analyzing hidden import 'scipy.special._precompute.wright_bessel'
+219984 INFO: Analyzing hidden import 
+'scipy.special._precompute.wright_bessel_data'
+220005 INFO: Analyzing hidden import 'scipy.special._precompute.wrightomega'
+220010 INFO: Analyzing hidden import 'scipy.special._precompute.zetac'
+220014 INFO: Analyzing hidden import 'scipy.special._test_internal'
+220015 INFO: Analyzing hidden import 'scipy.special._ufuncs_cxx'
+220016 INFO: Analyzing hidden import 'scipy.special.cython_special'
+220017 INFO: Analyzing hidden import 'scipy.special.tests.data'
+220018 INFO: Analyzing hidden import 'scipy.special.tests.test_basic'
+220872 INFO: Analyzing hidden import 'scipy.special.tests.test_bdtr'
+220892 INFO: Analyzing hidden import 'scipy.special.tests.test_boost_ufuncs'
+220904 INFO: Analyzing hidden import 'scipy.special.tests.test_boxcox'
+220923 INFO: Analyzing hidden import 'scipy.special.tests.test_cdflib'
+221006 INFO: Analyzing hidden import 'scipy.special.tests.test_cdft_asymptotic'
+221014 INFO: Analyzing hidden import 
+'scipy.special.tests.test_cephes_intp_cast'
+221021 INFO: Analyzing hidden import 'scipy.special.tests.test_cosine_distr'
+221031 INFO: Analyzing hidden import 'scipy.special.tests.test_cython_special'
+221094 INFO: Analyzing hidden import 'scipy.special.tests.test_data'
+221184 INFO: Analyzing hidden import 'scipy.special.tests.test_dd'
+221191 INFO: Analyzing hidden import 'scipy.special.tests.test_digamma'
+221201 INFO: Analyzing hidden import 'scipy.special.tests.test_ellip_harm'
+221267 INFO: Analyzing hidden import 'scipy.special.tests.test_erfinv'
+221277 INFO: Analyzing hidden import 
+'scipy.special.tests.test_exponential_integrals'
+221292 INFO: Analyzing hidden import 'scipy.special.tests.test_extending'
+221298 INFO: Analyzing hidden import 'scipy.special.tests.test_faddeeva'
+221310 INFO: Analyzing hidden import 'scipy.special.tests.test_gamma'
+221315 INFO: Analyzing hidden import 'scipy.special.tests.test_gammainc'
+221340 INFO: Analyzing hidden import 'scipy.special.tests.test_gen_harmonic'
+221354 INFO: Analyzing hidden import 'scipy.special.tests.test_hypergeometric'
+221374 INFO: Analyzing hidden import 'scipy.special.tests.test_iv_ratio'
+221394 INFO: Analyzing hidden import 'scipy.special.tests.test_kolmogorov'
+221464 INFO: Analyzing hidden import 'scipy.special.tests.test_lambertw'
+221596 INFO: Analyzing hidden import 'scipy.special.tests.test_legendre'
+221769 INFO: Analyzing hidden import 'scipy.special.tests.test_log1mexp'
+221788 INFO: Analyzing hidden import 'scipy.special.tests.test_loggamma'
+221798 INFO: Analyzing hidden import 'scipy.special.tests.test_logit'
+221813 INFO: Analyzing hidden import 'scipy.special.tests.test_logsumexp'
+221871 INFO: Analyzing hidden import 'scipy.special.tests.test_mpmath'
+222084 INFO: Analyzing hidden import 'scipy.special.tests.test_nan_inputs'
+222091 INFO: Analyzing hidden import 'scipy.special.tests.test_ndtr'
+222097 INFO: Analyzing hidden import 'scipy.special.tests.test_ndtri_exp'
+222105 INFO: Analyzing hidden import 'scipy.special.tests.test_orthogonal'
+222234 INFO: Analyzing hidden import 'scipy.special.tests.test_orthogonal_eval'
+222265 INFO: Analyzing hidden import 'scipy.special.tests.test_owens_t'
+222275 INFO: Analyzing hidden import 'scipy.special.tests.test_pcf'
+222279 INFO: Analyzing hidden import 'scipy.special.tests.test_pdtr'
+222287 INFO: Analyzing hidden import 'scipy.special.tests.test_powm1'
+222293 INFO: Analyzing hidden import 
+'scipy.special.tests.test_precompute_expn_asy'
+222297 INFO: Analyzing hidden import 
+'scipy.special.tests.test_precompute_gammainc'
+222311 INFO: Analyzing hidden import 
+'scipy.special.tests.test_precompute_utils'
+222317 INFO: Analyzing hidden import 'scipy.special.tests.test_round'
+222321 INFO: Analyzing hidden import 'scipy.special.tests.test_sf_error'
+222339 INFO: Analyzing hidden import 'scipy.special.tests.test_sici'
+222344 INFO: Analyzing hidden import 'scipy.special.tests.test_specfun'
+222352 INFO: Analyzing hidden import 'scipy.special.tests.test_spence'
+222358 INFO: Analyzing hidden import 'scipy.special.tests.test_spfun_stats'
+222365 INFO: Analyzing hidden import 'scipy.special.tests.test_sph_harm'
+222373 INFO: Analyzing hidden import 
+'scipy.special.tests.test_spherical_bessel'
+222426 INFO: Analyzing hidden import 
+'scipy.special.tests.test_support_alternative_backends'
+222464 INFO: Analyzing hidden import 'scipy.special.tests.test_trig'
+222475 INFO: Analyzing hidden import 
+'scipy.special.tests.test_ufunc_signatures'
+222481 INFO: Analyzing hidden import 'scipy.special.tests.test_wright_bessel'
+222497 INFO: Analyzing hidden import 'scipy.special.tests.test_wrightomega'
+222508 INFO: Analyzing hidden import 'scipy.special.tests.test_zeta'
+222647 INFO: Analyzing hidden import 'scipy.stats._continued_fraction'
+222667 INFO: Analyzing hidden import 'scipy.stats._result_classes'
+222671 INFO: Analyzing hidden import 'scipy.stats._sampling'
+222732 INFO: Analyzing hidden import 'scipy.stats.sampling'
+222734 INFO: Analyzing hidden import 'scipy.stats.tests'
+222737 INFO: Analyzing hidden import 'scipy.stats.tests.common_tests'
+222800 INFO: Analyzing hidden import 'scipy.stats.tests.test_axis_nan_policy'
+222976 INFO: Analyzing hidden import 'scipy.stats.tests.test_binned_statistic'
+223045 INFO: Analyzing hidden import 'scipy.stats.tests.test_censored_data'
+223073 INFO: Analyzing hidden import 'scipy.stats.tests.test_contingency'
+223100 INFO: Analyzing hidden import 
+'scipy.stats.tests.test_continued_fraction'
+223130 INFO: Analyzing hidden import 'scipy.stats.tests.test_continuous'
+223415 INFO: Analyzing hidden import 'scipy.stats.tests.test_continuous_basic'
+223645 INFO: Analyzing hidden import 
+'scipy.stats.tests.test_continuous_fit_censored'
+223700 INFO: Analyzing hidden import 'scipy.stats.tests.test_correlation'
+223735 INFO: Analyzing hidden import 'scipy.stats.tests.test_crosstab'
+223754 INFO: Analyzing hidden import 'scipy.stats.tests.test_device_dtype'
+223782 INFO: Analyzing hidden import 'scipy.stats.tests.test_discrete_basic'
+223851 INFO: Analyzing hidden import 'scipy.stats.tests.test_discrete_distns'
+223926 INFO: Analyzing hidden import 'scipy.stats.tests.test_distributions'
+225421 INFO: Analyzing hidden import 'scipy.stats.tests.test_entropy'
+225468 INFO: Analyzing hidden import 
+'scipy.stats.tests.test_fast_gen_inversion'
+225535 INFO: Analyzing hidden import 'scipy.stats.tests.test_fit'
+225866 INFO: Analyzing hidden import 'scipy.stats.tests.test_hypotests'
+226153 INFO: Analyzing hidden import 'scipy.stats.tests.test_kdeoth'
+226245 INFO: Analyzing hidden import 'scipy.stats.tests.test_marray'
+226318 INFO: Analyzing hidden import 'scipy.stats.tests.test_mgc'
+226359 INFO: Analyzing hidden import 'scipy.stats.tests.test_morestats'
+227174 INFO: Analyzing hidden import 'scipy.stats.tests.test_mstats_basic'
+227616 INFO: Analyzing hidden import 'scipy.stats.tests.test_mstats_extras'
+227647 INFO: Analyzing hidden import 'scipy.stats.tests.test_multicomp'
+227701 INFO: Analyzing hidden import 'scipy.stats.tests.test_multivariate'
+228835 INFO: Analyzing hidden import 'scipy.stats.tests.test_new_distributions'
+228844 INFO: Analyzing hidden import 'scipy.stats.tests.test_odds_ratio'
+228918 INFO: Analyzing hidden import 'scipy.stats.tests.test_qmc'
+229140 INFO: Analyzing hidden import 'scipy.stats.tests.test_quantile'
+229214 INFO: Analyzing hidden import 'scipy.stats.tests.test_rank'
+229270 INFO: Analyzing hidden import 'scipy.stats.tests.test_relative_risk'
+229285 INFO: Analyzing hidden import 'scipy.stats.tests.test_resampling'
+229619 INFO: Analyzing hidden import 'scipy.stats.tests.test_sampling'
+229930 INFO: Analyzing hidden import 
+'scipy.stats.tests.test_sensitivity_analysis'
+229971 INFO: Analyzing hidden import 'scipy.stats.tests.test_stats'
+231735 INFO: Analyzing hidden import 'scipy.stats.tests.test_survival'
+231827 INFO: Analyzing hidden import 'scipy.stats.tests.test_tukeylambda_stats'
+231838 INFO: Analyzing hidden import 'scipy.stats.tests.test_variation'
+231870 INFO: Processing module hooks (post-graph stage)...
+233172 INFO: Processing standard module hook 'hook-zoneinfo.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+233248 WARNING: Hidden import "pycparser.lextab" not found!
+233249 WARNING: Hidden import "pycparser.yacctab" not found!
+233479 INFO: Processing pre-safe-import-module hook 'hook-tomli.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+235462 WARNING: Hidden import "tzdata" not found!
+235475 INFO: Processing standard module hook 'hook-matplotlib.backends.py' 
+from 'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_ve
+nv\\Lib\\site-packages\\PyInstaller\\hooks'
+235477 INFO: Matplotlib backend selection method: automatic discovery of used 
+backends
+235668 INFO: Discovered Matplotlib backend(s) via `matplotlib.use()` call in 
+module 'scipy.cluster.tests.test_hierarchy': ['Agg']
+236079 INFO: The following Matplotlib backends were discovered by scanning for 
+`matplotlib.use()` calls: ['Agg']. If your backend of choice is not in this 
+list, either add a `matplotlib.use()` call to your code, or configure the 
+backend collection via hook options (see: 
+https://pyinstaller.org/en/stable/hooks-config.html#matplotlib-hooks).
+236080 INFO: Selected matplotlib backends: ['Agg']
+237159 INFO: Processing standard module hook 'hook-PIL.SpiderImagePlugin.py' 
+from 'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_ve
+nv\\Lib\\site-packages\\PyInstaller\\hooks'
+237344 INFO: Processing pre-safe-import-module hook 'hook-win32com.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\_pyinstaller_hooks_contrib\\pre_safe_import_module'
+247355 WARNING: Hidden import "scipy.special._cdflib" not found!
+250943 INFO: Performing binary vs. data reclassification (566 entries)
+341126 INFO: Looking for ctypes DLLs
+342533 INFO: Analyzing run-time hooks ...
+342626 INFO: Including run-time hook 'pyi_rth_inspect.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks\\rthooks'
+342633 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks\\rthooks'
+342642 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks\\rthooks'
+342650 INFO: Including run-time hook 'pyi_rth_pkgres.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks\\rthooks'
+342664 INFO: Including run-time hook 'pyi_rth_mplconfig.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks\\rthooks'
+342669 INFO: Processing pre-find-module-path hook 'hook-_pyi_rth_utils.py' 
+from 'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_ve
+nv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+342675 INFO: Processing standard module hook 'hook-_pyi_rth_utils.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks'
+342706 INFO: Including run-time hook 'pyi_rth_setuptools.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks\\rthooks'
+343012 INFO: Looking for dynamic libraries
+D:\Internship\Unlox Internship\AI_gym_assistant\.desktop_companion_venv\Lib\sit
+e-packages\PyInstaller\building\build_main.py:207: UserWarning: The 
+numpy.array_api submodule is still experimental. See NEP 47.
+  __import__(package)
+364360 INFO: Extra DLL search directories (AddDllDirectory): 
+['D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\
+Lib\\site-packages\\numpy.libs', 'D:\\Internship\\Unlox Internship\\AI_gym_assi
+stant\\.desktop_companion_venv\\Lib\\site-packages\\matplotlib.libs', 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\matplotlib.libs', 'D:\\Internship\\Unlox Internship\\AI_gym_
+assistant\\.desktop_companion_venv\\Lib\\site-packages\\scipy.libs', 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\cv2\\../../x64/vc14/bin']
+364361 INFO: Extra DLL search directories (PATH): ['D:\\Internship\\Unlox Inter
+nship\\AI_gym_assistant\\.desktop_companion_venv\\Lib\\site-packages\\cv2\\../.
+./x64/vc14/bin']

@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from pathlib import Path
-from PyInstaller.utils.hooks import collect_dynamic_libs, collect_submodules
+from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, collect_submodules
 
 root = Path(SPECPATH).parent
 
@@ -21,9 +21,15 @@ try:
 except Exception:
     pass
 
+try:
+    datas += collect_data_files("mediapipe", include_py_files=False)
+    binaries += collect_dynamic_libs("mediapipe")
+except Exception:
+    pass
+
 
 a = Analysis(
-    [str(root / "desktop_companion" / "launcher.py")],
+    [str(root / "desktop_companion" / "launcher.pyw")],
     pathex=[str(root), str(root / "backend")],
     binaries=binaries,
     datas=datas,
@@ -76,12 +82,13 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=str(root / "fitness_121040.ico"),
 )
 
 coll = COLLECT(

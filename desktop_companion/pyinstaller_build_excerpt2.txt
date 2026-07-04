@@ -1,0 +1,80 @@
+﻿229930 INFO: Analyzing hidden import 
+'scipy.stats.tests.test_sensitivity_analysis'
+229971 INFO: Analyzing hidden import 'scipy.stats.tests.test_stats'
+231735 INFO: Analyzing hidden import 'scipy.stats.tests.test_survival'
+231827 INFO: Analyzing hidden import 'scipy.stats.tests.test_tukeylambda_stats'
+231838 INFO: Analyzing hidden import 'scipy.stats.tests.test_variation'
+231870 INFO: Processing module hooks (post-graph stage)...
+233172 INFO: Processing standard module hook 'hook-zoneinfo.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+233248 WARNING: Hidden import "pycparser.lextab" not found!
+233249 WARNING: Hidden import "pycparser.yacctab" not found!
+233479 INFO: Processing pre-safe-import-module hook 'hook-tomli.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+235462 WARNING: Hidden import "tzdata" not found!
+235475 INFO: Processing standard module hook 'hook-matplotlib.backends.py' 
+from 'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_ve
+nv\\Lib\\site-packages\\PyInstaller\\hooks'
+235477 INFO: Matplotlib backend selection method: automatic discovery of used 
+backends
+235668 INFO: Discovered Matplotlib backend(s) via `matplotlib.use()` call in 
+module 'scipy.cluster.tests.test_hierarchy': ['Agg']
+236079 INFO: The following Matplotlib backends were discovered by scanning for 
+`matplotlib.use()` calls: ['Agg']. If your backend of choice is not in this 
+list, either add a `matplotlib.use()` call to your code, or configure the 
+backend collection via hook options (see: 
+https://pyinstaller.org/en/stable/hooks-config.html#matplotlib-hooks).
+236080 INFO: Selected matplotlib backends: ['Agg']
+237159 INFO: Processing standard module hook 'hook-PIL.SpiderImagePlugin.py' 
+from 'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_ve
+nv\\Lib\\site-packages\\PyInstaller\\hooks'
+237344 INFO: Processing pre-safe-import-module hook 'hook-win32com.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\_pyinstaller_hooks_contrib\\pre_safe_import_module'
+247355 WARNING: Hidden import "scipy.special._cdflib" not found!
+250943 INFO: Performing binary vs. data reclassification (566 entries)
+341126 INFO: Looking for ctypes DLLs
+342533 INFO: Analyzing run-time hooks ...
+342626 INFO: Including run-time hook 'pyi_rth_inspect.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks\\rthooks'
+342633 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks\\rthooks'
+342642 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks\\rthooks'
+342650 INFO: Including run-time hook 'pyi_rth_pkgres.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks\\rthooks'
+342664 INFO: Including run-time hook 'pyi_rth_mplconfig.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks\\rthooks'
+342669 INFO: Processing pre-find-module-path hook 'hook-_pyi_rth_utils.py' 
+from 'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_ve
+nv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+342675 INFO: Processing standard module hook 'hook-_pyi_rth_utils.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks'
+342706 INFO: Including run-time hook 'pyi_rth_setuptools.py' from 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\PyInstaller\\hooks\\rthooks'
+343012 INFO: Looking for dynamic libraries
+D:\Internship\Unlox Internship\AI_gym_assistant\.desktop_companion_venv\Lib\sit
+e-packages\PyInstaller\building\build_main.py:207: UserWarning: The 
+numpy.array_api submodule is still experimental. See NEP 47.
+  __import__(package)
+364360 INFO: Extra DLL search directories (AddDllDirectory): 
+['D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\
+Lib\\site-packages\\numpy.libs', 'D:\\Internship\\Unlox Internship\\AI_gym_assi
+stant\\.desktop_companion_venv\\Lib\\site-packages\\matplotlib.libs', 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\matplotlib.libs', 'D:\\Internship\\Unlox Internship\\AI_gym_
+assistant\\.desktop_companion_venv\\Lib\\site-packages\\scipy.libs', 
+'D:\\Internship\\Unlox Internship\\AI_gym_assistant\\.desktop_companion_venv\\L
+ib\\site-packages\\cv2\\../../x64/vc14/bin']
+364361 INFO: Extra DLL search directories (PATH): ['D:\\Internship\\Unlox Inter
+nship\\AI_gym_assistant\\.desktop_companion_venv\\Lib\\site-packages\\cv2\\../.
+./x64/vc14/bin']

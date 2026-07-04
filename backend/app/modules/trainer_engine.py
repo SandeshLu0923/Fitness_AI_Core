@@ -1,14 +1,11 @@
 import os
 import cv2
 import datetime
-import asyncio
 import json
 import threading
 import time
 import queue
 import mediapipe as mp
-from mediapipe.tasks.python import vision
-from mediapipe import Image, ImageFormat
 import numpy as np
 import joblib
 from app.modules.trainer_utils import calculate_angle, WeeklyMacrocyclePlan
@@ -258,243 +255,6 @@ def has_required_pose_visibility(landmarks, canonical_exercise: str, min_visibil
 # PRESERVED OPENCV COMPUTER VISION REPS TRACKING MODULE
 # ==========================================================================
 
-def launch_native_opencv_tracker(user_id: str, exercise_type: str, stop_event: threading.Event | None = None):
-    """Launch pose detection tracking using MediaPipe PoseLandmarker."""
-    print(f"\n[ENGINE_START] Executing tracking system workflow process loop for: {user_id}")
-    
-    # 🔧 FIX: Use a shared event loop context instead of creating new loops
-    loop = None
-    try:
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            # No running loop - create one
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        # Attempt to initialize webcam
-        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-        if not cap.isOpened():
-            cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            print("[ENGINE_ERROR] Webcam hardware is unavailable.")
-            return
-            
-        print("[ENGINE_INFO] Camera opened successfully")
-        
-        # Try to initialize MediaPipe - if it fails, still run in demo mode
-        pose_landmarker = None
-        try:
-            print("[ENGINE_INFO] Initializing PoseLandmarker from MediaPipe tasks...")
-            from mediapipe.tasks.python.vision import PoseLandmarkerOptions, RunningMode
-            
-            options = PoseLandmarkerOptions(
-                base_options=mp.tasks.BaseOptions(),
-                running_mode=RunningMode.IMAGE,
-                num_poses=1
-            )
-            pose_landmarker = vision.PoseLandmarker.create_from_options(options)
-            print("[ENGINE_INFO] ✓ PoseLandmarker initialized successfully")
-            
-        except Exception as e:
-            print(f"[ENGINE_WARNING] PoseLandmarker initialization failed: {type(e).__name__}")
-            print(f"[ENGINE_INFO] Running in demo/simulation mode without real pose detection")
-            # Continue anyway - we can run in demo mode
-        
-        # Initialize tracking variables
-        correct_reps = 0
-        incorrect_reps = 0
-        sets_completed = 0
-        current_direction = "UP"  
-        feedback_text = "Demo mode: No pose detection available"
-        pose_position_str = "UP"
-        hand_raised_frames = 0
-        current_rep_had_error = False  
-        frame_count = 0
-        last_timestamp_ms = 0
-
-        print(f"[ENGINE_INFO] Starting training loop for exercise: {exercise_type}")
-        
-        while cap.isOpened():
-            if stop_event and stop_event.is_set():
-                print("[ENGINE_INFO] Stop event received, terminating tracker loop")
-                break
-
-            ret, frame = cap.read()
-            if not ret: 
-                print("[ENGINE_INFO] Video stream ended")
-                break
-
-            frame = cv2.flip(frame, 1)
-            frame = cv2.resize(frame, (480, 640))
-            h, w, _ = frame.shape
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            
-            frame_count += 1
-            
-            # Try pose detection if available
-            if pose_landmarker:
-                try:
-                    # 🔧 FIX: Add frame delay to prevent timestamp conflicts
-                    # MediaPipe requires strictly monotonically increasing timestamps
-                    current_timestamp_ms = int((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds() * 1000)
-                    
-                    # Ensure timestamps only increase
-                    if current_timestamp_ms <= last_timestamp_ms:
-                        current_timestamp_ms = last_timestamp_ms + 1
-                    last_timestamp_ms = current_timestamp_ms
-                    
-                    # 🔧 FIX: Add small frame processing delay to reduce computational strain
-                    cv2.waitKey(10)  # ~30fps processing
-                    
-                    mp_image = Image(image_format=ImageFormat.SRGB, data=rgb_frame)
-                    results = pose_landmarker.detect(mp_image)
-                    
-                    if results and results.pose_landmarks and len(results.pose_landmarks) > 0:
-                        if frame_count % 30 == 0:
-                            print(f"[POSE_DEBUG] ✓ Frame {frame_count}: Detected pose")
-                        
-                        landmarks = results.pose_landmarks[0]
-                        lm_map = {}
-                        
-                        for idx, landmark in enumerate(landmarks):
-                            if landmark.visibility > 0.3:
-                                lm_map[idx] = (landmark.x * w, landmark.y * h)
-                        
-                        if len(lm_map) >= 5:
-                            # Process landmarks for rep counting
-                            if exercise_type.lower() == "squat" and 23 in lm_map and 25 in lm_map and 27 in lm_map:
-                                knee_angle = calculate_angle(lm_map[23], lm_map[25], lm_map[27])
-                                
-                                if knee_angle < 120.0: 
-                                    pose_position_str = "DOWN"
-                                elif knee_angle > 155.0: 
-                                    pose_position_str = "UP"
-                                
-                                if pose_position_str == "DOWN":
-                                    feedback_text = "Squat depth good. Push back up."
-                            
-                            # Rep counting logic
-                            if pose_position_str == "DOWN" and current_direction == "UP":
-                                current_direction = "DOWN"
-                            elif pose_position_str == "UP" and current_direction == "DOWN":
-                                current_direction = "UP"
-                                correct_reps += 1
-                                total_reps = correct_reps + incorrect_reps
-                                
-                                if total_reps > 0 and total_reps % 10 == 0:
-                                    sets_completed += 1
-                                
-                                print(f"[REP_COUNTER] Reps: {total_reps} | Sets: {sets_completed}")
-                                
-                                # Save intermediate data
-                                if total_reps > 0 and total_reps % 5 == 0:
-                                    try:
-                                        intermediate_log = {
-                                            "user_id": user_id,
-                                            "timestamp": datetime.datetime.utcnow(),
-                                            "correct_reps": int(correct_reps),
-                                            "incorrect_reps": int(incorrect_reps),
-                                            "exercises": [{
-                                                "name": exercise_type.capitalize(),
-                                                "sets_completed": int(sets_completed),
-                                                "correct_reps": int(correct_reps),
-                                                "incorrect_reps": int(incorrect_reps),
-                                            }]
-                                        }
-                                        # 🔧 FIX: Use thread-safe loop execution
-                                        if loop and not loop.is_closed():
-                                            asyncio.run_coroutine_threadsafe(
-                                                exercise_logs_col.insert_one(intermediate_log),
-                                                loop
-                                            )
-                                        print(f"[INTERMEDIATE_SAVE] Saved at {total_reps} reps")
-                                    except Exception as e:
-                                        print(f"[SAVE_WARNING] Save failed: {e}")
-                    else:
-                        feedback_text = "No pose detected - adjust angle"
-                        
-                except Exception as e:
-                    if frame_count % 60 == 0:
-                        print(f"[ENGINE_WARNING] Pose detection error (frame {frame_count}): {type(e).__name__}")
-            else:
-                # Demo mode: simulate reps for testing
-                feedback_text = "Demo Mode (no pose detection)"
-                if frame_count % 60 == 0:
-                    print(f"[DEMO_MODE] Frame {frame_count}: Running in demo mode")
-
-            # UI rendering
-            sidebar = construct_trainer_sidebar(
-                exercise_type, correct_reps, incorrect_reps, sets_completed, 
-                current_direction, pose_position_str, feedback_text, hand_raised_frames
-            )
-
-            master_canvas = np.hstack((frame, sidebar))
-            cv2.imshow("FITNESS AI - TRAINER CORE ENGINE", master_canvas)
-            
-            key = cv2.waitKey(1) & 0xFF
-            if key == 27 or key == ord('q') or key == ord('Q'): 
-                print("[ENGINE_INFO] Shutdown triggered by user")
-                break
-                
-            try:
-                if cv2.getWindowProperty("FITNESS AI - TRAINER CORE ENGINE", cv2.WND_PROP_VISIBLE) < 1: 
-                    break
-            except cv2.error:
-                break
-
-        cap.release()
-        cv2.destroyAllWindows()
-        
-        # Final database save
-        if (correct_reps + incorrect_reps) > 0:
-            try:
-                final_log = {
-                    "user_id": user_id,
-                    "timestamp": datetime.datetime.utcnow(),
-                    "correct_reps": int(correct_reps),
-                    "incorrect_reps": int(incorrect_reps),
-                    "exercises": [{
-                        "name": exercise_type.capitalize(),
-                        "sets_completed": int(sets_completed if sets_completed > 0 else 1),
-                        "correct_reps": int(correct_reps),
-                        "incorrect_reps": int(incorrect_reps),
-                    }]
-                }
-                # 🔧 FIX: Use thread-safe loop execution
-                if loop and not loop.is_closed():
-                    future = asyncio.run_coroutine_threadsafe(
-                        exercise_logs_col.insert_one(final_log),
-                        loop
-                    )
-                    # Wait for completion with timeout
-                    try:
-                        future.result(timeout=5)
-                    except Exception as e:
-                        print(f"[DATABASE_TIMEOUT] Save operation timed out: {e}")
-                print(f"[DATABASE_LOG_FINAL] Session complete! Reps: {correct_reps}, Sets: {sets_completed}")
-            except PyMongoError as e:
-                print(f"[DATABASE_ERROR] Final logging failed: {e}")
-                
-    except Exception as e:
-        print(f"[ENGINE_FATAL] Unexpected error in launch_native_opencv_tracker: {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
-    finally:
-        # Ensure resources are cleaned up
-        try:
-            cap.release()
-            cv2.destroyAllWindows()
-        except:
-            pass
-        
-        # Clean up event loop if created
-        if loop and not loop.is_closed():
-            try:
-                loop.close()
-            except:
-                pass
-
-
 def launch_native_opencv_tracker(
     user_id: str,
     exercise_type: str,
@@ -555,6 +315,7 @@ def launch_native_opencv_tracker(
             "session_id": session_id,
             "session_active": session_active,
             "timestamp": datetime.datetime.utcnow(),
+            "date": datetime.date.today().isoformat(),
             "exercise_name": display_exercise,
             "exercise_type": canonical_exercise,
             "sets_completed": int(sets_completed),
@@ -613,14 +374,17 @@ def launch_native_opencv_tracker(
         frame_count = 0
         shutdown_gesture_state = {"open_started_at": None}
         last_hand_results = None
+        shutdown_requested = False
         refresh_progress()
         save_live_stats(session_active=True, force=True)
 
         print(f"[ENGINE_INFO] Starting training loop for exercise: {canonical_exercise}")
 
+        cv2.namedWindow("FITNESS AI - TRAINER CORE ENGINE", cv2.WINDOW_NORMAL)
         while cap.isOpened():
             if stop_event and stop_event.is_set():
                 print("[ENGINE_INFO] Stop event received, terminating tracker loop")
+                shutdown_requested = True
                 break
 
             ret, frame = cap.read()
@@ -769,15 +533,19 @@ def launch_native_opencv_tracker(
             master_canvas = np.hstack((display_frame, last_sidebar))
             cv2.imshow("FITNESS AI - TRAINER CORE ENGINE", master_canvas)
 
-            key = cv2.waitKey(1) & 0xFF
-            if key == 27 or key == ord('q') or key == ord('Q'):
-                print("[ENGINE_INFO] Shutdown triggered by user")
+            key = cv2.waitKey(30) & 0xFF
+            if key in (27, ord('q'), ord('Q')):
+                print("[ENGINE_INFO] Shutdown triggered by user via keyboard")
+                shutdown_requested = True
                 break
 
             try:
                 if cv2.getWindowProperty("FITNESS AI - TRAINER CORE ENGINE", cv2.WND_PROP_VISIBLE) < 1:
+                    print("[ENGINE_INFO] Tracker window closed by user")
+                    shutdown_requested = True
                     break
             except cv2.error:
+                shutdown_requested = True
                 break
 
         save_live_stats(session_active=False, force=True)
@@ -788,17 +556,12 @@ def launch_native_opencv_tracker(
         traceback.print_exc()
     finally:
         try:
-            db_writer_stop_event.set()
-            if db_writer_thread is not None and db_writer_thread.is_alive():
-                db_writer_thread.join(timeout=1.5)
             if cap:
                 cap.release()
             if pose_tracker:
                 pose_tracker.close()
             if hand_tracker:
                 hand_tracker.close()
-            if sync_client:
-                sync_client.close()
             cv2.destroyAllWindows()
         except Exception:
             pass

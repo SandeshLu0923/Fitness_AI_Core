@@ -10,6 +10,8 @@ from datetime import datetime
 from typing import Optional
 import os
 import time
+import subprocess
+import psutil
 
 import httpx
 
@@ -53,6 +55,117 @@ def get_service():
         _service_cache = GymTrainerService()
     return _service_cache
 
+
+# ============================================================================
+# Desktop Companion App Management
+# ============================================================================
+_companion_process = None
+
+def get_companion_exe_path():
+    """Get the path to the desktop companion executable."""
+    # Try to find the companion app in common installation locations
+    possible_paths = [
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Fitness AI Desktop Tracker", "FitnessAI-Desktop-Tracker.exe"),
+        os.path.join(os.environ.get("PROGRAMFILES", ""), "Fitness AI Desktop Tracker", "FitnessAI-Desktop-Tracker.exe"),
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "dist", "FitnessAI-Desktop-Tracker", "FitnessAI-Desktop-Tracker.exe"),
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+    return None
+
+@router.post("/companion/start", status_code=status.HTTP_200_OK)
+async def start_companion_app():
+    """Start the desktop companion application."""
+    global _companion_process
+    try:
+        # Check if already running
+        if _companion_process and _companion_process.poll() is None:
+            return {"status": "already_running", "message": "Companion app is already running"}
+        
+        # Check if process exists by name
+        for proc in psutil.process_iter(['name']):
+            if proc.info['name'] == 'FitnessAI-Desktop-Tracker.exe':
+                return {"status": "already_running", "message": "Companion app is already running"}
+        
+        # Get companion exe path
+        exe_path = get_companion_exe_path()
+        if not exe_path:
+            return {"status": "not_found", "message": "Desktop companion executable not found. Please install the app first."}
+        
+        # Start the process with --from-backend flag
+        _companion_process = subprocess.Popen([exe_path, "--from-backend"], shell=False)
+        
+        return {
+            "status": "started",
+            "message": "Desktop companion app started successfully",
+            "pid": _companion_process.pid
+        }
+    except Exception as e:
+        print(f"[ERROR] Failed to start companion app: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to start companion app: {str(e)}")
+
+@router.post("/companion/stop", status_code=status.HTTP_200_OK)
+async def stop_companion_app():
+    """Stop the desktop companion application."""
+    global _companion_process
+    try:
+        # Stop managed process
+        if _companion_process and _companion_process.poll() is None:
+            _companion_process.terminate()
+            try:
+                _companion_process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                _companion_process.kill()
+            _companion_process = None
+        
+        # Also kill any running companion processes by name
+        for proc in psutil.process_iter(['name', 'pid']):
+            if proc.info['name'] == 'FitnessAI-Desktop-Tracker.exe':
+                try:
+                    p = psutil.Process(proc.info['pid'])
+                    p.terminate()
+                    try:
+                        p.wait(timeout=5)
+                    except psutil.TimeoutExpired:
+                        p.kill()
+                except psutil.NoSuchProcess:
+                    pass
+        
+        return {"status": "stopped", "message": "Desktop companion app stopped successfully"}
+    except Exception as e:
+        print(f"[ERROR] Failed to stop companion app: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to stop companion app: {str(e)}")
+
+@router.get("/companion/status", status_code=status.HTTP_200_OK)
+async def get_companion_status():
+    """Check if the desktop companion app is running."""
+    try:
+        # Check managed process
+        if _companion_process and _companion_process.poll() is None:
+            return {"status": "running", "pid": _companion_process.pid}
+        
+        # Check by process name
+        for proc in psutil.process_iter(['name', 'pid']):
+            if proc.info['name'] == 'FitnessAI-Desktop-Tracker.exe':
+                return {"status": "running", "pid": proc.info['pid']}
+        
+        return {"status": "not_running"}
+    except Exception as e:
+        print(f"[ERROR] Failed to check companion status: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to check companion status: {str(e)}")
+
+@router.get("/companion/installed", status_code=status.HTTP_200_OK)
+async def check_companion_installed():
+    """Check if the desktop companion app is installed."""
+    try:
+        exe_path = get_companion_exe_path()
+        if exe_path:
+            return {"status": "installed", "path": exe_path}
+        return {"status": "not_installed"}
+    except Exception as e:
+        print(f"[ERROR] Failed to check companion installation: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to check companion installation: {str(e)}")
 
 # ============================================================================
 # Endpoints

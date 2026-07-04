@@ -134,18 +134,15 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       setFeedback('Starting desktop companion app...');
       
       // First, try to start the companion app via backend
-      let companionStarted = false;
       try {
         const startResponse = await axios.post(`${apiBaseUrl}/api/gym-trainer/companion/start`);
         if (startResponse.data.status === 'not_supported') {
           // Backend is on cloud, try to launch via custom URL scheme
           console.log('Backend cannot start companion, trying custom URL scheme');
           window.location.href = 'fitnessai://start';
-          companionStarted = true;
           setFeedback('Launching desktop companion app...');
         } else {
           setFeedback('Desktop companion started. Initializing OpenCV tracker...');
-          companionStarted = true;
           // Wait a moment for the companion app to start
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
@@ -154,7 +151,6 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
         // Try custom URL scheme as fallback
         try {
           window.location.href = 'fitnessai://start';
-          companionStarted = true;
           setFeedback('Launching desktop companion app...');
         } catch {
           setFeedback('Could not start companion app. Please launch it manually from your desktop.');

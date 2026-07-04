@@ -63,10 +63,6 @@ _companion_process = None
 
 def get_companion_exe_path():
     """Get the path to the desktop companion executable."""
-    # Only check Windows paths on Windows systems
-    if os.name != 'nt':
-        return None
-    
     # Try to find the companion app in common installation locations
     possible_paths = [
         os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Fitness AI Desktop Tracker", "FitnessAI-Desktop-Tracker.exe"),
@@ -83,10 +79,6 @@ async def start_companion_app():
     """Start the desktop companion application."""
     global _companion_process
     try:
-        # On non-Windows systems, companion app cannot run
-        if os.name != 'nt':
-            return {"status": "not_supported", "message": "Companion app only supported on Windows"}
-        
         # Check if already running
         if _companion_process and _companion_process.poll() is None:
             return {"status": "already_running", "message": "Companion app is already running"}
@@ -118,10 +110,6 @@ async def stop_companion_app():
     """Stop the desktop companion application."""
     global _companion_process
     try:
-        # On non-Windows systems, companion app cannot run
-        if os.name != 'nt':
-            return {"status": "not_supported", "message": "Companion app only supported on Windows"}
-        
         # Stop managed process
         if _companion_process and _companion_process.poll() is None:
             _companion_process.terminate()
@@ -153,10 +141,6 @@ async def stop_companion_app():
 async def get_companion_status():
     """Check if the desktop companion app is running."""
     try:
-        # On non-Windows systems, companion app cannot run
-        if os.name != 'nt':
-            return {"status": "not_supported", "message": "Companion app only supported on Windows"}
-        
         # Check managed process
         if _companion_process and _companion_process.poll() is None:
             return {"status": "running", "pid": _companion_process.pid}
@@ -175,10 +159,6 @@ async def get_companion_status():
 async def check_companion_installed():
     """Check if the desktop companion app is installed."""
     try:
-        # On non-Windows systems, companion app cannot run
-        if os.name != 'nt':
-            return {"status": "not_supported", "message": "Companion app only supported on Windows"}
-        
         exe_path = get_companion_exe_path()
         if exe_path:
             return {"status": "installed", "path": exe_path}

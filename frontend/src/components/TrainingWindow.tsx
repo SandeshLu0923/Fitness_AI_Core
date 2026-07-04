@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Download, ExternalLink, Monitor, Play, Send, Smartphone, Square, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Download, Monitor, Play, Send, Smartphone, Square, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
 interface TrainingStats {
   exercise_name: string;
@@ -67,25 +67,6 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
   useEffect(() => {
     checkCompanionStatus();
   }, []);
-
-  const openDesktopCompanion = async () => {
-    try {
-      await axios.get(`${localTrackerUrl}/health`, localTrackerRequest);
-      setFeedback('Desktop companion is already running. You can start the workout.');
-      return;
-    } catch {
-      // Fall through to the installed-app deep link.
-    }
-
-    const params = new URLSearchParams({
-      userId,
-      exercise: exerciseType.toLowerCase(),
-      sets: String(Math.max(1, Number(targetSets) || 1)),
-      reps: String(Math.max(1, Number(targetReps) || 10)),
-    });
-    window.location.href = `${desktopDeepLink}?${params.toString()}`;
-    setFeedback('Opening desktop companion. If Windows asks, allow the Fitness AI app to open.');
-  };
 
   const finalizeWorkout = async (finalStats: TrainingStats) => {
     if (completionHandledRef.current) return;

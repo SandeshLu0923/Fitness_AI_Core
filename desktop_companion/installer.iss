@@ -29,10 +29,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "..\dist\FitnessAI-Desktop-Tracker\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\fitness_121040.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Fitness AI Desktop Tracker"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\Fitness AI Desktop Tracker"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{group}\Fitness AI Desktop Tracker"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\fitness_121040.ico"
+Name: "{autodesktop}\Fitness AI Desktop Tracker"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\fitness_121040.ico"; Tasks: desktopicon
 
 [Registry]
 Root: HKCU; Subkey: "Software\Classes\fitnessai"; ValueType: string; ValueName: ""; ValueData: "URL:Fitness AI Desktop Tracker"; Flags: uninsdeletekey

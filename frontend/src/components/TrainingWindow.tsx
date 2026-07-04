@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Download, ExternalLink, Monitor, Play, Send, Smartphone, Square } from 'lucide-react';
+import { Download, ExternalLink, Monitor, Play, Send, Smartphone, Square, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
 interface TrainingStats {
   exercise_name: string;
@@ -32,15 +32,41 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
   const [stats, setStats] = useState<TrainingStats | null>(null);
   const [feedback, setFeedback] = useState<string>('Ready to start training');
   const [loading, setLoading] = useState(false);
+  const [companionStatus, setCompanionStatus] = useState<'running' | 'installed' | 'not_installed' | 'checking'>('checking');
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const completionHandledRef = useRef(false);
   const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-  const localTrackerUrl = import.meta.env.VITE_LOCAL_TRACKER_URL || 'http://localhost:8000';
+  const localTrackerUrl = import.meta.env.VITE_LOCAL_TRACKER_URL || 'http://127.0.0.1:8000';
   const desktopCompanionUrl = import.meta.env.VITE_DESKTOP_COMPANION_URL || '';
   const mobileCompanionUrl = import.meta.env.VITE_MOBILE_COMPANION_URL || '';
   const desktopDeepLink = import.meta.env.VITE_DESKTOP_COMPANION_DEEP_LINK || 'fitnessai://tracker';
   const hasCompanionDownloads = Boolean(desktopCompanionUrl || mobileCompanionUrl);
   const localTrackerRequest = { skipApiRewrite: true } as any;
+
+  const checkCompanionStatus = async () => {
+    try {
+      const statusResponse = await axios.get(`${apiBaseUrl}/api/gym-trainer/companion/status`);
+      if (statusResponse.data.status === 'running') {
+        setCompanionStatus('running');
+        return;
+      }
+      
+      // Check if installed
+      const installedResponse = await axios.get(`${apiBaseUrl}/api/gym-trainer/companion/installed`);
+      if (installedResponse.data.status === 'installed') {
+        setCompanionStatus('installed');
+      } else {
+        setCompanionStatus('not_installed');
+      }
+    } catch (error) {
+      // If backend check fails, assume not installed
+      setCompanionStatus('not_installed');
+    }
+  };
+
+  useEffect(() => {
+    checkCompanionStatus();
+  }, []);
 
   const openDesktopCompanion = async () => {
     try {
@@ -114,27 +140,48 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
     try {
       setLoading(true);
       completionHandledRef.current = false;
-      setFeedback('Initializing OpenCV desktop tracker...');
+      setFeedback('Starting desktop companion app...');
       
-      // Use backend OpenCV tracker for desktop-only performance
-      await axios.post(
-        `${localTrackerUrl}/api/gym-trainer/start`,
-        {
-          user_id: userId,
-          exercise_type: exerciseType.toLowerCase(),
-          target_sets: Math.max(1, Number(targetSets) || 1),
-          target_reps_per_set: Math.max(1, Number(targetReps) || 10),
-        },
-        localTrackerRequest,
-      );
-      setIsTraining(true);
-      setFeedback('OpenCV tracking started. Switch to the native tracker window.');
-      if (!pollIntervalRef.current) {
-        startPolling();
+      // First, start the companion app via backend
+      try {
+        await axios.post(`${apiBaseUrl}/api/gym-trainer/companion/start`);
+        setFeedback('Desktop companion started. Initializing OpenCV tracker...');
+        // Wait a moment for the companion app to start
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (companionError) {
+        console.warn('Failed to start companion app:', companionError);
+        setFeedback('Could not start companion app. Ensure it is installed.');
+        setLoading(false);
+        return;
+      }
+      
+      // Then start the vision session
+      try {
+        await axios.post(
+          `${localTrackerUrl}/api/gym-trainer/start`,
+          {
+            user_id: userId,
+            exercise_type: exerciseType.toLowerCase(),
+            target_sets: Math.max(1, Number(targetSets) || 1),
+            target_reps_per_set: Math.max(1, Number(targetReps) || 10),
+          },
+          localTrackerRequest,
+        );
+        setIsTraining(true);
+        setFeedback('OpenCV tracking started. Switch to the native tracker window.');
+        if (!pollIntervalRef.current) {
+          startPolling();
+        }
+      } catch (trackerError) {
+        console.error('Failed to start tracker:', trackerError);
+        setFeedback('Tracker failed to start. Stopping companion app...');
+        // Stop companion if tracker fails
+        await axios.post(`${apiBaseUrl}/api/gym-trainer/companion/stop`).catch(() => {});
+        setFeedback('Could not start tracker. Please try again.');
       }
     } catch (error: any) {
       console.error('Failed to start training:', error);
-      setFeedback(`Local tracker not available. Open or install the companion app, then start again.`);
+      setFeedback('Failed to start training. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -156,6 +203,14 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       } catch (stopError) {
         console.warn('Failed to stop backend tracker:', stopError);
         setFeedback('Could not stop backend tracker cleanly. Close the native window manually.');
+      }
+      
+      // Stop the companion app
+      try {
+        await axios.post(`${apiBaseUrl}/api/gym-trainer/companion/stop`);
+        setFeedback('Desktop companion stopped.');
+      } catch (companionStopError) {
+        console.warn('Failed to stop companion app:', companionStopError);
       }
       
       // Log the completed workout if we have stats
@@ -313,52 +368,82 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
           )}
         </div>
 
-        {/* Companion App Access */}
+        {/* Companion App Status */}
         <div className="bg-zinc-950/70 border border-zinc-800 rounded-lg p-4 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div>
-              <div className="text-xs font-bold text-cyan-400 uppercase tracking-widest">Companion Tracker</div>
-              <p className="text-xs text-zinc-500 mt-1">
-                Live video runs on the user's device. Install once, then open the companion before starting a workout.
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-bold text-cyan-400 uppercase tracking-widest">Companion App Status</div>
+            <div className="flex items-center gap-2">
+              {companionStatus === 'running' && (
+                <div className="flex items-center gap-1.5 text-xs text-green-400">
+                  <CheckCircle size={14} />
+                  <span className="font-semibold">Running</span>
+                </div>
+              )}
+              {companionStatus === 'installed' && (
+                <div className="flex items-center gap-1.5 text-xs text-yellow-400">
+                  <AlertCircle size={14} />
+                  <span className="font-semibold">Installed</span>
+                </div>
+              )}
+              {companionStatus === 'not_installed' && (
+                <div className="flex items-center gap-1.5 text-xs text-red-400">
+                  <XCircle size={14} />
+                  <span className="font-semibold">Not Installed</span>
+                </div>
+              )}
+              {companionStatus === 'checking' && (
+                <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+                  <div className="h-3 w-3 rounded-full border-2 border-zinc-500 border-t-zinc-300 animate-spin" />
+                  <span className="font-semibold">Checking...</span>
+                </div>
+              )}
             </div>
-            <button
-              type="button"
-              onClick={openDesktopCompanion}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-xs font-black uppercase tracking-wider text-cyan-300 hover:bg-cyan-500/20"
-            >
-              <ExternalLink size={15} />
-              Open Companion
-            </button>
           </div>
-
-          {hasCompanionDownloads && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {desktopCompanionUrl && (
-                <a
-                  href={desktopCompanionUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-200 hover:border-cyan-500/50 hover:text-cyan-300"
-                >
-                  <Monitor size={15} />
-                  <Download size={14} />
-                  Download Desktop Tracker
-                </a>
-              )}
-              {mobileCompanionUrl && (
-                <a
-                  href={mobileCompanionUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-200 hover:border-cyan-500/50 hover:text-cyan-300"
-                >
-                  <Smartphone size={15} />
-                  <Download size={14} />
-                  Download Mobile Tracker
-                </a>
-              )}
+          
+          {companionStatus === 'not_installed' && hasCompanionDownloads && (
+            <div className="space-y-2">
+              <p className="text-xs text-zinc-500">
+                Install the desktop companion app to enable AI-powered exercise tracking.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {desktopCompanionUrl && (
+                  <a
+                    href={desktopCompanionUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-200 hover:border-cyan-500/50 hover:text-cyan-300"
+                  >
+                    <Monitor size={15} />
+                    <Download size={14} />
+                    Download Desktop Tracker
+                  </a>
+                )}
+                {mobileCompanionUrl && (
+                  <a
+                    href={mobileCompanionUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-200 hover:border-cyan-500/50 hover:text-cyan-300"
+                  >
+                    <Smartphone size={15} />
+                    <Download size={14} />
+                    Download Mobile Tracker
+                  </a>
+                )}
+              </div>
             </div>
+          )}
+          
+          {companionStatus === 'installed' && (
+            <p className="text-xs text-zinc-500">
+              Companion app is installed. Click "Start Training" to begin your workout session.
+            </p>
+          )}
+          
+          {companionStatus === 'running' && (
+            <p className="text-xs text-zinc-500">
+              Companion app is currently running. You can start a new workout or stop the current session.
+            </p>
           )}
         </div>
 

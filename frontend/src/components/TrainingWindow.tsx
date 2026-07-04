@@ -39,7 +39,6 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
   const localTrackerUrl = import.meta.env.VITE_LOCAL_TRACKER_URL || 'http://127.0.0.1:8000';
   const desktopCompanionUrl = import.meta.env.VITE_DESKTOP_COMPANION_URL || '';
   const mobileCompanionUrl = import.meta.env.VITE_MOBILE_COMPANION_URL || '';
-  const desktopDeepLink = import.meta.env.VITE_DESKTOP_COMPANION_DEEP_LINK || 'fitnessai://tracker';
   const hasCompanionDownloads = Boolean(desktopCompanionUrl || mobileCompanionUrl);
   const localTrackerRequest = { skipApiRewrite: true } as any;
 

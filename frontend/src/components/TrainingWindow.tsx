@@ -56,8 +56,8 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
         setCompanionStatus('installed');
       } else if (installedResponse.data.status === 'not_supported') {
         // Backend is on cloud (Linux), can't check Windows paths
-        // Assume installed if user has download links available
-        setCompanionStatus('installed');
+        // Default to not_installed - user needs to manually install
+        setCompanionStatus('not_installed');
       } else {
         setCompanionStatus('not_installed');
       }

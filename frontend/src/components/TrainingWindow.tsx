@@ -68,6 +68,12 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
     checkCompanionStatus();
   }, []);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Companion status:', companionStatus);
+    console.log('Has downloads:', hasCompanionDownloads);
+  }, [companionStatus, hasCompanionDownloads]);
+
   const finalizeWorkout = async (finalStats: TrainingStats) => {
     if (completionHandledRef.current) return;
     completionHandledRef.current = true;

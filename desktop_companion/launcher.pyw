@@ -57,9 +57,14 @@ def main() -> None:
     # Allow starting via custom URL scheme or --from-backend flag
     # Check if started via URL scheme (fitnessai://start)
     url_scheme_started = False
+    
+    # Debug: Log all arguments
+    print(f"Arguments received: {sys.argv}")
+    
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
-            if arg.startswith('fitnessai://'):
+            print(f"Checking argument: {arg}")
+            if arg.startswith('fitnessai://') or 'fitnessai' in arg.lower():
                 url_scheme_started = True
                 print(f"Started via URL scheme: {arg}")
                 break

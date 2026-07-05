@@ -11,6 +11,7 @@ datas = [
     (str(root / "backend" / "app" / "pose_model.joblib"), "app"),
     (str(root / "backend" / "app" / "pose_state_model.joblib"), "app"),
     (str(root / "backend" / "app" / "exercise_phase_models.joblib"), "app"),
+    (str(root / "fitness_121040.ico"), "."),
 ]
 
 binaries = []

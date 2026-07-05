@@ -57,11 +57,26 @@ def bundled_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def get_icon_path():
+    """Get the path to the app icon file."""
+    root = bundled_root()
+    icon_path = root / "fitness_121040.ico"
+    if icon_path.exists():
+        return icon_path
+    # Fallback to creating a simple icon if file not found
+    return None
+
+
 def create_icon_image():
-    """Create a simple icon for the system tray."""
-    # Create a simple colored square as icon
-    image = Image.new('RGB', (64, 64), color=(0, 200, 255))
-    return image
+    """Create icon for the system tray from the app icon file."""
+    icon_path = get_icon_path()
+    if icon_path:
+        try:
+            return Image.open(icon_path)
+        except Exception as e:
+            print(f"Failed to load icon file: {e}")
+    # Fallback to simple colored square
+    return Image.new('RGB', (64, 64), color=(0, 200, 255))
 
 
 # Global reference to the system tray icon for shutdown
@@ -83,7 +98,12 @@ def run_system_tray():
     menu = pystray.Menu(
         pystray.MenuItem("Exit", on_exit)
     )
-    tray_icon = pystray.Icon("fitness_ai", icon_image, menu=menu)
+    tray_icon = pystray.Icon(
+        "fitness_ai",
+        icon_image,
+        title="Fitness AI Desktop Tracker",  # Tooltip on hover
+        menu=menu
+    )
     tray_icon.run()
 
 

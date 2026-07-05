@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 import io
 import threading
+import signal
 
 import uvicorn
 from dotenv import load_dotenv
@@ -63,20 +64,27 @@ def create_icon_image():
     return image
 
 
+# Global reference to the system tray icon for shutdown
+tray_icon = None
+
+
 def on_exit(icon, item):
     """Handle exit from system tray."""
+    global tray_icon
     icon.stop()
-    sys.exit(0)
+    # Send SIGTERM to gracefully shutdown the application
+    os.kill(os.getpid(), signal.SIGTERM)
 
 
 def run_system_tray():
     """Run the system tray icon."""
+    global tray_icon
     icon_image = create_icon_image()
     menu = pystray.Menu(
         pystray.MenuItem("Exit", on_exit)
     )
-    icon = pystray.Icon("fitness_ai", icon_image, menu=menu)
-    icon.run()
+    tray_icon = pystray.Icon("fitness_ai", icon_image, menu=menu)
+    tray_icon.run()
 
 
 def main() -> None:

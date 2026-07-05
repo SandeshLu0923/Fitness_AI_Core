@@ -305,13 +305,20 @@ export default function DashboardTab({ onTriggerDiet, onTriggerWorkout, onTrigge
   }, [userId]);
 
   useEffect(() => {
-    const completedKeys = new Set(completedWorkouts.map((workout) => exerciseKey(workout.exercise_name)));
-    const remaining = plannedExercises.filter((item) => !completedKeys.has(exerciseKey(item.name)));
+    // Keep exercises in the dropdown only if their targets have NOT been completed yet
+    const remaining = plannedExercises.filter((item) => {
+      const progress = progressForExercise(item);
+      return !progress.isCompleted;
+    });
+
     setTodaysExercises(remaining);
+
+    // If the currently selected exercise gets completed, switch to the first available one
     if (remaining.length > 0 && !remaining.some((item) => exerciseKey(item.name) === exercise)) {
       setExercise(exerciseKey(remaining[0].name));
     }
-  }, [plannedExercises, completedWorkouts]);
+  }, [plannedExercises, completedWorkouts, stats]);
+
 
   useEffect(() => {
     setIsChallengeActivated(isStoredChallengeActivated());

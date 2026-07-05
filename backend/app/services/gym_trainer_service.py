@@ -25,6 +25,9 @@ class GymTrainerService:
         exercise_type: str,
         target_reps_per_set: int = 10,
         target_sets: int = 1,
+        resume_session: bool = False,
+        resume_reps: int = 0,
+        resume_sets: int = 0,
     ) -> Dict[str, Any]:
         """
         Launch OpenCV tracker in thread executor (non-blocking).
@@ -43,25 +46,29 @@ class GymTrainerService:
 
             # Queue the executor task and get future
             future = loop.run_in_executor(
-                self.executor, 
-                launch_native_opencv_tracker, 
-                user_id, 
+                self.executor,
+                launch_native_opencv_tracker,
+                user_id,
                 exercise_type,
                 stop_event,
                 target_reps_per_set,
                 target_sets,
+                resume_session,
+                resume_reps,
+                resume_sets,
             )
-            print(f"[TRACKER] Vision session queued for {user_id} - {exercise_type}")
-            
+            print(f"[TRACKER] Vision session queued for {user_id} - {exercise_type} (resume={resume_session})")
+
             # Return immediately without awaiting (fire-and-forget pattern)
             # Client can poll /latest-stats endpoint for updates
             return {
-                "status": "initiated", 
+                "status": "initiated",
                 "message": "Pose tracking session started in background",
                 "user_id": user_id,
                 "exercise_type": exercise_type,
                 "target_reps_per_set": target_reps_per_set,
                 "target_sets": target_sets,
+                "resume_session": resume_session,
             }
         except RuntimeError as e:
             # RuntimeError means no event loop running (shouldn't happen in FastAPI context)

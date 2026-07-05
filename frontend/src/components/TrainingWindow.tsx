@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Download, Monitor, Play, Send, Square } from 'lucide-react';
+import { Download, Monitor, Play, Send, Square, AlertCircle } from 'lucide-react';
 
 interface TrainingStats {
   exercise_name: string;
@@ -33,6 +33,8 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
   const [feedback, setFeedback] = useState<string>('Ready to start training');
   const [loading, setLoading] = useState(false);
   const [companionLaunched, setCompanionLaunched] = useState(false);
+  const [incompleteSession, setIncompleteSession] = useState<any>(null);
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const completionHandledRef = useRef(false);
   const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -41,6 +43,22 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
   const mobileCompanionUrl = import.meta.env.VITE_MOBILE_COMPANION_URL || '';
   const hasCompanionDownloads = Boolean(desktopCompanionUrl || mobileCompanionUrl);
   const localTrackerRequest = { skipApiRewrite: true } as any;
+
+  const checkIncompleteSession = async () => {
+    try {
+      const response = await axios.get(`${apiBaseUrl}/api/gym-trainer/incomplete-session/${userId}`);
+      if (response.data.found) {
+        setIncompleteSession(response.data);
+        setShowResumePrompt(true);
+      }
+    } catch (error) {
+      console.log('No incomplete session found or error checking:', error);
+    }
+  };
+
+  useEffect(() => {
+    checkIncompleteSession();
+  }, [userId]);
 
   const finalizeWorkout = async (finalStats: TrainingStats) => {
     if (completionHandledRef.current) return;
@@ -110,17 +128,28 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       }
       
       setFeedback('Initializing tracker...');
-      
+
       // Start the vision session
       try {
+        const startPayload: any = {
+          user_id: userId,
+          exercise_type: exerciseType.toLowerCase(),
+          target_sets: Math.max(1, Number(targetSets) || 1),
+          target_reps_per_set: Math.max(1, Number(targetReps) || 10),
+        };
+
+        // Add resume parameters if resuming
+        if (showResumePrompt && incompleteSession) {
+          startPayload.resume_session = true;
+          startPayload.resume_reps = incompleteSession.correct_reps;
+          startPayload.resume_sets = incompleteSession.sets_completed;
+          setShowResumePrompt(false);
+          setIncompleteSession(null);
+        }
+
         await axios.post(
           `${localTrackerUrl}/api/gym-trainer/start`,
-          {
-            user_id: userId,
-            exercise_type: exerciseType.toLowerCase(),
-            target_sets: Math.max(1, Number(targetSets) || 1),
-            target_reps_per_set: Math.max(1, Number(targetReps) || 10),
-          },
+          startPayload,
           localTrackerRequest,
         );
         setIsTraining(true);
@@ -172,10 +201,6 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       // Log the completed workout if we have stats
       if (stats) {
         const expectedTotal = (stats.target_sets || targetSets) * (stats.target_reps_per_set || targetReps);
-        if (!stats.exercise_completed && (stats.total_reps || 0) < expectedTotal) {
-          setFeedback(`Stopped at ${stats.total_reps || 0}/${expectedTotal} reps. Complete the target to save this exercise.`);
-          return;
-        }
         try {
           await axios.post(
             `${apiBaseUrl}/api/gym-trainer/log-completed-workout`,
@@ -187,7 +212,8 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
               incorrect_reps: stats.incorrect_reps,
               target_sets: stats.target_sets || targetSets,
               target_reps_per_set: stats.target_reps_per_set || targetReps,
-              notes: `Session completed with ${stats.accuracy}% accuracy`
+              notes: `Session ${stats.exercise_completed ? 'completed' : 'stopped'} with ${stats.accuracy}% accuracy. ${stats.total_reps || 0}/${expectedTotal} reps.`,
+              exercise_completed: stats.exercise_completed
             }
           );
           setFeedback('✅ Workout logged successfully!');
@@ -340,11 +366,11 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
               </label>
             </div>
           </div>
-          
+
           <p className="text-xs text-zinc-500">
             Launch the companion app from your desktop shortcut or system tray icon, then check the box above to confirm.
           </p>
-          
+
           {hasCompanionDownloads && (
             <div className="space-y-2">
               <p className="text-xs text-zinc-400 italic">
@@ -365,6 +391,36 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
             </div>
           )}
         </div>
+
+        {/* Resume Session Prompt */}
+        {showResumePrompt && incompleteSession && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={16} className="text-yellow-400" />
+              <div className="text-xs font-bold text-yellow-400 uppercase tracking-widest">Incomplete Session Found</div>
+            </div>
+            <p className="text-xs text-zinc-300">
+              You have an incomplete session: {incompleteSession.exercise_name} - {incompleteSession.total_reps} reps, {incompleteSession.sets_completed} sets.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowResumePrompt(false)}
+                className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-bold uppercase tracking-wider text-zinc-300 hover:border-zinc-600 hover:text-zinc-200"
+              >
+                Start Fresh
+              </button>
+              <button
+                onClick={() => {
+                  setShowResumePrompt(false);
+                  startTraining();
+                }}
+                className="flex-1 rounded-lg border border-yellow-500/50 bg-yellow-500/20 px-3 py-2 text-xs font-bold uppercase tracking-wider text-yellow-300 hover:border-yellow-500 hover:text-yellow-200"
+              >
+                Resume
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Real-time Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

@@ -261,6 +261,9 @@ def launch_native_opencv_tracker(
     stop_event: threading.Event | None = None,
     target_reps_per_set: int = 10,
     target_sets: int = 1,
+    resume_session: bool = False,
+    resume_reps: int = 0,
+    resume_sets: int = 0,
 ):
     """Launch pose detection tracking using MediaPipe Pose and Hands."""
     print(f"\n[ENGINE_START] Executing tracking system workflow process loop for: {user_id}")
@@ -275,15 +278,17 @@ def launch_native_opencv_tracker(
     pose_tracker = None
     hand_tracker = None
 
-    correct_reps = 0
+    correct_reps = resume_reps if resume_session else 0
     incorrect_reps = 0
-    sets_completed = 0
+    sets_completed = resume_sets if resume_session else 0
     current_direction = "UP"
     feedback_text = "Initializing pose detection..."
+    if resume_session:
+        feedback_text = f"Resuming from {correct_reps} reps, {sets_completed} sets."
     pose_position_str = "UP"
     shutdown_progress = 0
-    current_set = 1
-    current_set_reps = 0
+    current_set = sets_completed + 1 if resume_session else 1
+    current_set_reps = correct_reps % target_reps_per_set if resume_session else 0
     exercise_completed = False
     stable_state = "UP"
     down_frames = 0

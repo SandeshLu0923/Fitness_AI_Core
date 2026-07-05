@@ -24,6 +24,9 @@ class StartTrackingRequest(BaseModel):
     exercise_type: str
     target_reps_per_set: int = 10
     target_sets: int = 1
+    resume_session: Optional[bool] = False
+    resume_reps: Optional[int] = 0
+    resume_sets: Optional[int] = 0
 
 
 class LogCompletedWorkoutRequest(BaseModel):
@@ -35,6 +38,7 @@ class LogCompletedWorkoutRequest(BaseModel):
     target_reps_per_set: Optional[int] = None
     target_sets: Optional[int] = None
     notes: Optional[str] = None
+    exercise_completed: Optional[bool] = False
 
 
 class StopTrackingRequest(BaseModel):
@@ -188,6 +192,9 @@ async def start_vision_session(payload: StartTrackingRequest):
             payload.exercise_type,
             max(1, payload.target_reps_per_set),
             max(1, payload.target_sets),
+            payload.resume_session if hasattr(payload, 'resume_session') else False,
+            payload.resume_reps if hasattr(payload, 'resume_reps') else 0,
+            payload.resume_sets if hasattr(payload, 'resume_sets') else 0,
         )
         from app.services.analytics_service import AnalyticsService
         await AnalyticsService.log_ai_inference(
@@ -225,6 +232,46 @@ async def stop_vision_session(payload: StopTrackingRequest):
     except Exception as e:
         print(f"[ERROR] Failed to stop vision session: {e}")
         raise HTTPException(status_code=500, detail="Unable to stop pose tracking at this time.")
+
+
+@router.get("/incomplete-session/{user_id}")
+async def get_incomplete_session(user_id: str):
+    """Get the latest incomplete workout session for resume functionality."""
+    try:
+        from app.database import exercise_logs_col
+        from datetime import date, timedelta
+
+        today = date.today().isoformat()
+        # Find the most recent incomplete session for today
+        incomplete_session = await exercise_logs_col.find_one(
+            {
+                "user_id": user_id,
+                "date": today,
+                "exercise_completed": False
+            },
+            sort=[("completed_at", -1)]
+        )
+
+        if not incomplete_session:
+            return {
+                "found": False,
+                "message": "No incomplete session found"
+            }
+
+        return {
+            "found": True,
+            "exercise_name": incomplete_session.get("exercise_name"),
+            "correct_reps": incomplete_session.get("correct_reps", 0),
+            "incorrect_reps": incomplete_session.get("incorrect_reps", 0),
+            "total_reps": incomplete_session.get("total_reps", 0),
+            "sets_completed": incomplete_session.get("sets_completed", 0),
+            "target_sets": incomplete_session.get("target_sets", 1),
+            "target_reps_per_set": incomplete_session.get("target_reps_per_set", 10),
+            "completed_at": incomplete_session.get("completed_at")
+        }
+    except Exception as e:
+        print(f"[GET_INCOMPLETE_ERROR] {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve incomplete session")
 
 
 @router.get("/latest-stats/{user_id}")
@@ -386,7 +433,8 @@ async def log_completed_workout(payload: LogCompletedWorkoutRequest):
             "accuracy": round((payload.correct_reps / max(payload.correct_reps + payload.incorrect_reps, 1)) * 100, 2),
             "notes": payload.notes or "",
             "completed_at": datetime.utcnow(),
-            "date": date.today().isoformat()
+            "date": date.today().isoformat(),
+            "exercise_completed": payload.exercise_completed if payload.exercise_completed is not None else False
         }
         
         result = await exercise_logs_col.insert_one(completed_workout)

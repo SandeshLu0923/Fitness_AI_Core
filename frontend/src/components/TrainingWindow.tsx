@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Download, Monitor, Play, Send, Smartphone, Square } from 'lucide-react';
+import { Download, Monitor, Play, Send, Square } from 'lucide-react';
 
 interface TrainingStats {
   exercise_name: string;

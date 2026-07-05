@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Download, Monitor, Play, Send, Smartphone, Square, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Download, Monitor, Play, Send, Smartphone, Square } from 'lucide-react';
 
 interface TrainingStats {
   exercise_name: string;
@@ -32,7 +32,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
   const [stats, setStats] = useState<TrainingStats | null>(null);
   const [feedback, setFeedback] = useState<string>('Ready to start training');
   const [loading, setLoading] = useState(false);
-  const [companionStatus, setCompanionStatus] = useState<'running' | 'installed' | 'not_installed' | 'checking'>('checking');
+  const [companionLaunched, setCompanionLaunched] = useState(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const completionHandledRef = useRef(false);
   const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -41,54 +41,6 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
   const mobileCompanionUrl = import.meta.env.VITE_MOBILE_COMPANION_URL || '';
   const hasCompanionDownloads = Boolean(desktopCompanionUrl || mobileCompanionUrl);
   const localTrackerRequest = { skipApiRewrite: true } as any;
-
-  const checkCompanionStatus = async () => {
-    try {
-      // First, try to detect local companion server with specific validation
-      try {
-        const localHealthResponse = await axios.get(`${localTrackerUrl}/health`, { timeout: 2000 });
-        // Validate it's actually the companion app by checking service name
-        if (localHealthResponse.data.status === 'healthy' && 
-            localHealthResponse.data.service === 'Fitness AI Desktop Tracker Companion') {
-          setCompanionStatus('running');
-          return;
-        }
-      } catch (localError) {
-        console.log('Local companion server not responding:', localError);
-      }
-      
-      // Fallback to backend check
-      const statusResponse = await axios.get(`${apiBaseUrl}/api/gym-trainer/companion/status`);
-      if (statusResponse.data.status === 'running') {
-        setCompanionStatus('running');
-        return;
-      }
-      
-      // Check if installed
-      const installedResponse = await axios.get(`${apiBaseUrl}/api/gym-trainer/companion/installed`);
-      if (installedResponse.data.status === 'installed') {
-        setCompanionStatus('installed');
-      } else if (installedResponse.data.status === 'not_supported') {
-        // Backend is on cloud (Linux), can't check Windows paths
-        setCompanionStatus('not_installed');
-      } else {
-        setCompanionStatus('not_installed');
-      }
-    } catch (error) {
-      console.log('Backend companion check failed, assuming not installed:', error);
-      setCompanionStatus('not_installed');
-    }
-  };
-
-  useEffect(() => {
-    checkCompanionStatus();
-  }, []);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('Companion status:', companionStatus);
-    console.log('Has downloads:', hasCompanionDownloads);
-  }, [companionStatus, hasCompanionDownloads]);
 
   const finalizeWorkout = async (finalStats: TrainingStats) => {
     if (completionHandledRef.current) return;
@@ -144,26 +96,16 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
       setLoading(true);
       completionHandledRef.current = false;
       
-      // Check if companion app is running (manual launch approach)
-      setFeedback('Checking companion app status...');
-      let companionRunning = false;
-      try {
-        const healthResponse = await axios.get(`${localTrackerUrl}/health`, { timeout: 2000 });
-        if (healthResponse.data.service === 'Fitness AI Desktop Tracker Companion') {
-          companionRunning = true;
-          setFeedback('Companion app detected. Initializing tracker...');
-        }
-      } catch {
-        // Companion not running
-      }
-      
-      if (!companionRunning) {
-        setFeedback('Companion app is not running. Please launch it from your desktop shortcut or system tray icon, then try again.');
+      // Manual launch approach - rely on user confirmation
+      if (!companionLaunched) {
+        setFeedback('Please confirm you have launched the companion app.');
         setLoading(false);
         return;
       }
       
-      // Then start the vision session
+      setFeedback('Initializing tracker...');
+      
+      // Start the vision session
       try {
         await axios.post(
           `${localTrackerUrl}/api/gym-trainer/start`,
@@ -379,90 +321,42 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
         {/* Companion App Status */}
         <div className="bg-zinc-950/70 border border-zinc-800 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <div className="text-xs font-bold text-cyan-400 uppercase tracking-widest">Companion App Status</div>
+            <div className="text-xs font-bold text-cyan-400 uppercase tracking-widest">Companion App</div>
             <div className="flex items-center gap-2">
-              {companionStatus === 'running' && (
-                <div className="flex items-center gap-1.5 text-xs text-green-400">
-                  <CheckCircle size={14} />
-                  <span className="font-semibold">Running</span>
-                </div>
-              )}
-              {companionStatus === 'installed' && (
-                <div className="flex items-center gap-1.5 text-xs text-yellow-400">
-                  <AlertCircle size={14} />
-                  <span className="font-semibold">Installed</span>
-                </div>
-              )}
-              {companionStatus === 'not_installed' && (
-                <div className="flex items-center gap-1.5 text-xs text-red-400">
-                  <XCircle size={14} />
-                  <span className="font-semibold">Not Installed</span>
-                </div>
-              )}
-              {companionStatus === 'checking' && (
-                <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-                  <div className="h-3 w-3 rounded-full border-2 border-zinc-500 border-t-zinc-300 animate-spin" />
-                  <span className="font-semibold">Checking...</span>
-                </div>
-              )}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={companionLaunched}
+                  onChange={(e) => setCompanionLaunched(e.target.checked)}
+                  className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-zinc-900"
+                />
+                <span className="text-xs text-zinc-300">I have launched the companion app</span>
+              </label>
             </div>
           </div>
           
-          {companionStatus === 'not_installed' && (
+          <p className="text-xs text-zinc-500">
+            Launch the companion app from your desktop shortcut or system tray icon, then check the box above to confirm.
+          </p>
+          
+          {hasCompanionDownloads && (
             <div className="space-y-2">
-              <p className="text-xs text-zinc-500">
-                Install the desktop companion app to enable AI-powered exercise tracking.
+              <p className="text-xs text-zinc-400 italic">
+                Don't have the companion app? Download it from the link below.
               </p>
-              {hasCompanionDownloads ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {desktopCompanionUrl && (
-                    <a
-                      href={desktopCompanionUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-200 hover:border-cyan-500/50 hover:text-cyan-300"
-                    >
-                      <Monitor size={15} />
-                      <Download size={14} />
-                      Download Desktop Tracker
-                    </a>
-                  )}
-                  {mobileCompanionUrl && (
-                    <a
-                      href={mobileCompanionUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-200 hover:border-cyan-500/50 hover:text-cyan-300"
-                    >
-                      <Smartphone size={15} />
-                      <Download size={14} />
-                      Download Mobile Tracker
-                    </a>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-xs text-zinc-400 italic">
-                    Download link not configured in environment. Contact administrator for the companion app installer.
-                  </p>
-                  <p className="text-xs text-zinc-500">
-                    <span className="text-cyan-400">Manual setup:</span> Download the installer from the GitHub releases page and install it manually.
-                  </p>
-                </div>
+              {desktopCompanionUrl && (
+                <a
+                  href={desktopCompanionUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-200 hover:border-cyan-500/50 hover:text-cyan-300"
+                >
+                  <Monitor size={15} />
+                  <Download size={14} />
+                  Download Desktop Tracker
+                </a>
               )}
             </div>
-          )}
-          
-          {companionStatus === 'installed' && (
-            <p className="text-xs text-zinc-500">
-              Companion app is installed. Click "Start Training" to begin your workout session.
-            </p>
-          )}
-          
-          {companionStatus === 'running' && (
-            <p className="text-xs text-zinc-500">
-              Companion app is currently running. You can start a new workout or stop the current session.
-            </p>
           )}
         </div>
 

@@ -45,8 +45,11 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
   const finalizeWorkout = async (finalStats: TrainingStats) => {
     if (completionHandledRef.current) return;
     completionHandledRef.current = true;
+    console.log('Finalizing workout with stats:', finalStats);
+    console.log('API Base URL:', apiBaseUrl);
     try {
-      await axios.post(
+      console.log('Attempting to log workout to backend...');
+      const logResponse = await axios.post(
         `${apiBaseUrl}/api/gym-trainer/log-completed-workout`,
         {
           user_id: userId,
@@ -59,8 +62,10 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
           notes: `Session completed with ${finalStats.accuracy}% accuracy`
         }
       );
+      console.log('Workout logged successfully:', logResponse.data);
       try {
-        await axios.post(
+        console.log('Attempting to log performance score...');
+        const perfResponse = await axios.post(
           `${apiBaseUrl}/api/performance/score`,
           {
             session_data: {
@@ -79,6 +84,7 @@ export default function TrainingWindow({ userId, exerciseType = 'squat', targetS
             },
           }
         );
+        console.log('Performance score logged successfully:', perfResponse.data);
       } catch (performanceError) {
         console.warn('Could not log performance score:', performanceError);
       }
